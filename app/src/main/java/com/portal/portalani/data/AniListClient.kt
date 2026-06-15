@@ -14,6 +14,12 @@ data class MediaListUpdate(
     val userScore: Float?,
 )
 
+data class FetchBatchResult(
+    val slides: List<AnimeSlide>,
+    val nextPage: Int,
+    val hasMore: Boolean,
+)
+
 class AniListClient(private val http: OkHttpClient) {
   @Throws(IOException::class)
   fun fetchViewer(accessToken: String): ViewerProfile {
@@ -29,7 +35,7 @@ class AniListClient(private val http: OkHttpClient) {
   fun fetchLibrary(
       filters: LibraryFilters,
       page: Int = 1,
-      perPage: Int = 50,
+      perPage: Int = DEFAULT_PER_PAGE,
       accessToken: String? = null,
   ): List<AnimeSlide> {
     val season = filters.resolvedSeason()
@@ -48,7 +54,21 @@ class AniListClient(private val http: OkHttpClient) {
   }
 
   @Throws(IOException::class)
-  fun fetchTrending(page: Int = 1, perPage: Int = 50): List<AnimeSlide> =
+  fun fetchLibraryPages(
+      filters: LibraryFilters,
+      startPage: Int = 1,
+      pageCount: Int = DEFAULT_INITIAL_PAGES,
+      perPage: Int = DEFAULT_PER_PAGE,
+      accessToken: String? = null,
+  ): FetchBatchResult =
+      fetchPages(
+          startPage = startPage,
+          pageCount = pageCount,
+          perPage = perPage,
+      ) { page -> fetchLibrary(filters, page, perPage, accessToken) }
+
+  @Throws(IOException::class)
+  fun fetchTrending(page: Int = 1, perPage: Int = DEFAULT_PER_PAGE): List<AnimeSlide> =
       fetchLibrary(
           LibraryFilters(sort = LibrarySort.TRENDING),
           page = page,
@@ -60,25 +80,53 @@ class AniListClient(private val http: OkHttpClient) {
       accessToken: String,
       userId: Int,
       status: ListStatus,
-      perPage: Int = 50,
-      maxPages: Int = 5,
-  ): List<AnimeSlide> {
+      perPage: Int = DEFAULT_PER_PAGE,
+      maxPages: Int = DEFAULT_INITIAL_PAGES,
+  ): List<AnimeSlide> =
+      fetchViewerListPages(accessToken, userId, status, startPage = 1, pageCount = maxPages, perPage = perPage)
+          .slides
+
+  @Throws(IOException::class)
+  fun fetchViewerListPages(
+      accessToken: String,
+      userId: Int,
+      status: ListStatus,
+      startPage: Int = 1,
+      pageCount: Int = DEFAULT_INITIAL_PAGES,
+      perPage: Int = DEFAULT_PER_PAGE,
+  ): FetchBatchResult =
+      fetchPages(startPage = startPage, pageCount = pageCount, perPage = perPage) { page ->
+        val variables =
+            JSONObject()
+                .put("userId", userId)
+                .put("status", status.apiValue)
+                .put("page", page)
+                .put("perPage", perPage)
+        val data = postGraphQl(VIEWER_LIST_QUERY, variables, accessToken)
+        val pageNode = data.optJSONObject("Page") ?: JSONObject()
+        parseMediaListPage(pageNode)
+      }
+
+  private fun fetchPages(
+      startPage: Int,
+      pageCount: Int,
+      perPage: Int,
+      fetchPage: (Int) -> List<AnimeSlide>,
+  ): FetchBatchResult {
     val slides = mutableListOf<AnimeSlide>()
-    for (page in 1..maxPages) {
-      val variables =
-          JSONObject()
-              .put("userId", userId)
-              .put("status", status.apiValue)
-              .put("page", page)
-              .put("perPage", perPage)
-      val data = postGraphQl(VIEWER_LIST_QUERY, variables, accessToken)
-      val pageNode = data.optJSONObject("Page") ?: break
-      val batch = parseMediaListPage(pageNode)
-      if (batch.isEmpty()) break
+    var page = startPage
+    repeat(pageCount) {
+      val batch = fetchPage(page)
+      if (batch.isEmpty()) {
+        return FetchBatchResult(slides, page, hasMore = false)
+      }
       slides += batch
-      if (batch.size < perPage) break
+      if (batch.size < perPage) {
+        return FetchBatchResult(slides, page + 1, hasMore = false)
+      }
+      page++
     }
-    return slides
+    return FetchBatchResult(slides, page, hasMore = true)
   }
 
   @Throws(IOException::class)
@@ -276,6 +324,9 @@ class AniListClient(private val http: OkHttpClient) {
 
   companion object {
     private const val GRAPHQL_URL = "https://graphql.anilist.co"
+    const val DEFAULT_PER_PAGE = 50
+    const val DEFAULT_INITIAL_PAGES = 5
+    const val DEFAULT_LOAD_MORE_PAGES = 2
 
     private val MEDIA_FIELDS =
         """

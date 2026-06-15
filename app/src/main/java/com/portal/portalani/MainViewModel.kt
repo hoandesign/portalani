@@ -9,6 +9,7 @@ import com.portal.portalani.data.AniListClient
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
+import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
@@ -39,6 +40,8 @@ sealed interface UiState {
   data class Showing(
       val slides: List<AnimeSlide>,
       val fromCache: Boolean = false,
+      /** Bumps on full feed reload; slideshow order resets when this changes. */
+      val orderResetToken: Int = 0,
   ) : UiState
 
   data class Error(
@@ -76,6 +79,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
   private var pendingOAuthState: String? = null
+
+  private var feedNextPage = 1
+  private var feedHasMore = false
+  private var feedLoadingMore = false
+  private var orderResetToken = 0
+  private var activeFeedKey: String? = null
 
   init {
     ScreensaverGuardWorker.schedule(app)
@@ -199,6 +208,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     refresh()
   }
 
+  fun onSlideIndexChanged(index: Int) {
+    val showing = _state.value as? UiState.Showing ?: return
+    if (!feedHasMore || feedLoadingMore) return
+    if (showing.slides.isEmpty()) return
+    if (index < showing.slides.lastIndex - LOAD_MORE_THRESHOLD) return
+    loadMoreSlides()
+  }
+
   fun clearUserMessage() {
     _userMessage.value = null
   }
@@ -304,6 +321,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val token = tokens.accessToken()
     val cacheKey = settings.cacheKey()
 
+    resetFeedPagination(cacheKey)
+
     val cachedFresh =
         withContext(Dispatchers.IO) { slideCache.load(cacheKey) }
     val cachedStale =
@@ -312,26 +331,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     if (showLoading && cachedFresh == null) {
       _state.value = UiState.Loading
     } else if (cachedFresh != null) {
-      _state.value = UiState.Showing(cachedFresh, fromCache = true)
+      _state.value = showingState(cachedFresh, fromCache = true)
     }
 
     try {
-      val slides =
+      val batch =
           withContext(Dispatchers.IO) {
             when (settings.sourceMode) {
               SourceMode.PERSONAL -> {
-                if (token == null) return@withContext emptyList()
+                if (token == null) return@withContext null
                 val userId =
                     tokens.viewerId()
                         ?: client.fetchViewer(token).also { tokens.saveViewer(it) }.id
-                client.fetchViewerList(token, userId, settings.listStatus)
+                client.fetchViewerListPages(
+                    accessToken = token,
+                    userId = userId,
+                    status = settings.listStatus,
+                    startPage = 1,
+                    pageCount = AniListClient.DEFAULT_INITIAL_PAGES,
+                )
               }
-              SourceMode.LIBRARY -> client.fetchLibrary(settings.libraryFilters(), accessToken = token)
+              SourceMode.LIBRARY ->
+                  client.fetchLibraryPages(
+                      filters = settings.libraryFilters(),
+                      startPage = 1,
+                      pageCount = AniListClient.DEFAULT_INITIAL_PAGES,
+                      accessToken = token,
+                  )
             }
           }
+      val slides = batch?.slides.orEmpty()
       if (slides.isEmpty()) {
         if (cachedStale != null) {
-          _state.value = UiState.Showing(cachedStale, fromCache = true)
+          _state.value = showingState(cachedStale, fromCache = true)
           return
         }
         if (settings.sourceMode == SourceMode.PERSONAL && token == null) {
@@ -352,11 +384,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         return
       }
+      if (batch != null) {
+        feedNextPage = batch.nextPage
+        feedHasMore = batch.hasMore
+      }
       withContext(Dispatchers.IO) { slideCache.save(cacheKey, slides) }
-      _state.value = UiState.Showing(slides, fromCache = false)
+      _state.value = showingState(slides, fromCache = false)
     } catch (e: Exception) {
       if (cachedStale != null) {
-        _state.value = UiState.Showing(cachedStale, fromCache = true)
+        _state.value = showingState(cachedStale, fromCache = true)
         return
       }
       if (settings.sourceMode == SourceMode.PERSONAL && token != null) {
@@ -370,6 +406,83 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = UiState.Error(e.message ?: "Could not load anime")
       }
     }
+  }
+
+  private fun loadMoreSlides() {
+    if (feedLoadingMore || !feedHasMore) return
+    val settings = _settings.value
+    val token = tokens.accessToken()
+    if (settings.sourceMode == SourceMode.PERSONAL && token == null) return
+
+    feedLoadingMore = true
+    viewModelScope.launch {
+      try {
+        val batch =
+            withContext(Dispatchers.IO) {
+              when (settings.sourceMode) {
+                SourceMode.PERSONAL -> {
+                  val accessToken = token ?: return@withContext FetchBatchResult(emptyList(), feedNextPage, false)
+                  val userId =
+                      tokens.viewerId()
+                          ?: client.fetchViewer(accessToken).also { tokens.saveViewer(it) }.id
+                  client.fetchViewerListPages(
+                      accessToken = accessToken,
+                      userId = userId,
+                      status = settings.listStatus,
+                      startPage = feedNextPage,
+                      pageCount = AniListClient.DEFAULT_LOAD_MORE_PAGES,
+                  )
+                }
+                SourceMode.LIBRARY ->
+                    client.fetchLibraryPages(
+                        filters = settings.libraryFilters(),
+                        startPage = feedNextPage,
+                        pageCount = AniListClient.DEFAULT_LOAD_MORE_PAGES,
+                        accessToken = token,
+                    )
+              }
+            }
+        feedNextPage = batch.nextPage
+        feedHasMore = batch.hasMore
+        if (batch.slides.isNotEmpty()) {
+          appendSlides(batch.slides)
+          persistCurrentSlides()
+        }
+      } catch (_: Exception) {
+        // Keep current feed; try again on a later slide.
+      } finally {
+        feedLoadingMore = false
+      }
+    }
+  }
+
+  private fun resetFeedPagination(cacheKey: String) {
+    if (activeFeedKey != cacheKey) {
+      activeFeedKey = cacheKey
+      orderResetToken++
+    }
+    feedNextPage = 1
+    feedHasMore = false
+    feedLoadingMore = false
+  }
+
+  private fun showingState(slides: List<AnimeSlide>, fromCache: Boolean): UiState.Showing =
+      UiState.Showing(
+          slides = slides,
+          fromCache = fromCache,
+          orderResetToken = orderResetToken,
+      )
+
+  private fun appendSlides(batch: List<AnimeSlide>) {
+    val current = _state.value as? UiState.Showing ?: return
+    val existingIds = current.slides.asSequence().map { it.id }.toSet()
+    val merged = current.slides + batch.filter { it.id !in existingIds }
+    if (merged.size == current.slides.size) return
+    _state.value = current.copy(slides = merged)
+  }
+
+  private companion object {
+    const val LOAD_MORE_THRESHOLD = 8
   }
 
   private fun bringAppToFront() {

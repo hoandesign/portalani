@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
           onSetFormatFilter = vm::setFormatFilter,
           onSetLibrarySort = vm::setLibrarySort,
           onSetSeasonKey = vm::setSeasonKey,
+          onSlideIndexChanged = vm::onSlideIndexChanged,
         )
       }
     }

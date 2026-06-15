@@ -87,6 +87,7 @@ fun PortalAniApp(
     onSetFormatFilter: (FormatFilter) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
+    onSlideIndexChanged: (Int) -> Unit = {},
 ) {
   var showSettings by remember { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
@@ -117,6 +118,7 @@ fun PortalAniApp(
             SlideshowScreen(
                 slides = state.slides,
                 fromCache = state.fromCache,
+                orderResetToken = state.orderResetToken,
                 shuffle = settings.shuffle,
                 intervalMs = settings.intervalMs,
                 settingsOpen = showSettings,
@@ -127,6 +129,7 @@ fun PortalAniApp(
                 onToggleFavourite = onToggleFavourite,
                 onSetAnimeListStatus = onSetAnimeListStatus,
                 onRemoveFromList = onRemoveFromList,
+                onSlideIndexChanged = onSlideIndexChanged,
             )
         is UiState.Error ->
             ErrorScreen(
@@ -252,6 +255,7 @@ private fun ErrorScreen(
 private fun SlideshowScreen(
     slides: List<AnimeSlide>,
     fromCache: Boolean,
+    orderResetToken: Int,
     shuffle: Boolean,
     intervalMs: Long,
     settingsOpen: Boolean,
@@ -262,18 +266,35 @@ private fun SlideshowScreen(
     onToggleFavourite: (Int) -> Unit,
     onSetAnimeListStatus: (Int, ListStatus) -> Unit,
     onRemoveFromList: (Int) -> Unit,
+    onSlideIndexChanged: (Int) -> Unit,
 ) {
-  val slideIdKey = slides.joinToString(separator = ",") { it.id.toString() }
-  val orderedIds =
-      remember(slideIdKey, shuffle) {
-        if (shuffle) {
-          slides.shuffled(Random(slideIdKey.hashCode().toLong())).map { it.id }
-        } else {
-          slides.map { it.id }
+  var orderedIds by remember(orderResetToken, shuffle) {
+    mutableStateOf(buildSlideOrder(slides.map { it.id }, shuffle, orderResetToken))
+  }
+
+  LaunchedEffect(orderResetToken, shuffle) {
+    orderedIds = buildSlideOrder(slides.map { it.id }, shuffle, orderResetToken)
+  }
+
+  LaunchedEffect(slides) {
+    val allIds = slides.map { it.id }
+    val known = orderedIds.toSet()
+    val allSet = allIds.toSet()
+    when {
+      orderedIds.any { it !in allSet } ->
+          orderedIds = buildSlideOrder(allIds, shuffle, orderResetToken)
+      else -> {
+        val added = allIds.filter { it !in known }
+        if (added.isNotEmpty()) {
+          val tail = if (shuffle) added.shuffled(Random((orderResetToken to added).hashCode().toLong())) else added
+          orderedIds = orderedIds + tail
         }
       }
+    }
+  }
+
   val order =
-      remember(slideIdKey, slides) {
+      remember(slides, orderedIds) {
         val byId = slides.associateBy { it.id }
         orderedIds.mapNotNull { byId[it] }
       }
@@ -281,7 +302,7 @@ private fun SlideshowScreen(
   var index by remember { mutableIntStateOf(0) }
   var navEpoch by remember { mutableIntStateOf(0) }
 
-  LaunchedEffect(slideIdKey) {
+  LaunchedEffect(orderResetToken) {
     index = 0
   }
 
@@ -303,6 +324,10 @@ private fun SlideshowScreen(
 
   val safeIndex = index.coerceIn(0, order.lastIndex)
   val interactionOpen = scoreDialogMediaId != null || listDialogMediaId != null || showSignInPrompt
+
+  LaunchedEffect(safeIndex, order.size) {
+    onSlideIndexChanged(safeIndex)
+  }
 
   BackHandler(enabled = interactionOpen && !settingsOpen) {
     scoreDialogMediaId = null
@@ -658,24 +683,11 @@ private fun SettingsPanel(
         }
 
         Spacer(Modifier.height(12.dp))
-        Box {
-          PortalFilterField(
-              label = stringResource(R.string.season_filter),
-              value = SeasonSelection.labelFor(settings.seasonKey),
-              onClick = { seasonMenuOpen = true },
-          )
-          DropdownMenu(expanded = seasonMenuOpen, onDismissRequest = { seasonMenuOpen = false }) {
-            seasonOptions.forEach { (key, label) ->
-              DropdownMenuItem(
-                  text = { Text(label) },
-                  onClick = {
-                    seasonMenuOpen = false
-                    onSetSeasonKey(key)
-                  },
-              )
-            }
-          }
-        }
+        PortalFilterField(
+            label = stringResource(R.string.season_filter),
+            value = SeasonSelection.labelFor(settings.seasonKey),
+            onClick = { seasonMenuOpen = true },
+        )
       }
 
       Spacer(Modifier.height(24.dp))
@@ -710,6 +722,16 @@ private fun SettingsPanel(
       }
     }
   }
+
+  if (seasonMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.season_filter),
+        options = seasonOptions,
+        selectedKey = settings.seasonKey,
+        onDismiss = { seasonMenuOpen = false },
+        onSelect = onSetSeasonKey,
+    )
+  }
 }
 
 @Composable
@@ -743,4 +765,11 @@ private fun statusLabel(status: ListStatus): String =
       ListStatus.PAUSED -> stringResource(R.string.status_paused)
       ListStatus.DROPPED -> stringResource(R.string.status_dropped)
       ListStatus.REPEATING -> stringResource(R.string.status_repeating)
+    }
+
+private fun buildSlideOrder(ids: List<Int>, shuffle: Boolean, seed: Int): List<Int> =
+    if (shuffle) {
+      ids.shuffled(Random((seed to ids.size).hashCode().toLong()))
+    } else {
+      ids
     }

@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
@@ -41,6 +44,75 @@ import androidx.compose.ui.window.DialogProperties
 import com.portal.portalani.R
 import com.portal.portalani.data.ListStatus
 import kotlin.math.roundToInt
+
+@Composable
+fun PortalPickerDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    selectedKey: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+  Dialog(
+      onDismissRequest = onDismiss,
+      properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Column(
+        modifier =
+            Modifier.padding(horizontal = 48.dp)
+                .fillMaxWidth()
+                .widthIn(max = 520.dp)
+                .heightIn(max = 420.dp)
+                .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
+                .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+    ) {
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+      ) {
+        Text(title, color = PortalAniColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        PortalCircleIconButton(
+            icon = PortalIcons.Close,
+            contentDescription = stringResource(R.string.close),
+            onClick = onDismiss,
+        )
+      }
+      Spacer(Modifier.height(12.dp))
+      LazyColumn(
+          modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        items(options, key = { it.first }) { (key, label) ->
+          val selected = key == selectedKey
+          Surface(
+              onClick = {
+                onSelect(key)
+                onDismiss()
+              },
+              modifier = Modifier.fillMaxWidth(),
+              shape = PortalAniShapes.Field,
+              color = if (selected) PortalAniColors.AccentSoft else Color(0x10FFFFFF),
+              border =
+                  androidx.compose.foundation.BorderStroke(
+                      1.dp,
+                      if (selected) PortalAniColors.Accent else PortalAniColors.Border,
+                  ),
+          ) {
+            Text(
+                text = label,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                color = if (selected) PortalAniColors.Accent else PortalAniColors.TextPrimary,
+                fontSize = 17.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            )
+          }
+        }
+      }
+    }
+  }
+}
 
 @Composable
 fun PortalCircleIconButton(
