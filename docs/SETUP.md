@@ -88,11 +88,34 @@ Requires Google Chrome (headless screenshot of `scripts/icon-generator.html`).
 
 ## 3. Meta Portal setup
 
-### Enable developer access
+Official reference: [Meta — Set up your device (Portal)](https://developers.meta.com/horizon/documentation/android-apps/portal-setup/)
 
-1. On the Portal, open **Settings → System → Developer options** (steps vary slightly by Portal OS version).
-2. Enable **USB debugging** (and **Wireless debugging** if you deploy over Wi‑Fi).
-3. Connect the Portal to your computer via USB, or pair over Wi‑Fi with `adb connect IP:PORT`.
+### Supported devices
+
+| Device | minSdkVersion | Connection |
+|--------|---------------|------------|
+| Portal (1st and 2nd gen) | 28 / 29 | USB-C (back of device) |
+| Portal Mini | 29 | USB-C |
+| Portal+ (1st and 2nd gen) | 28 / 29 | USB-C |
+| Portal Go | 29 | USB-C (under rubber cover) |
+| Portal TV | 29 | USB-C |
+
+Portal Ani targets **minSdk 28** (Portal / Portal+ 1st gen) and **targetSdk 29**.
+
+### Enable ADB on the Portal
+
+Meta Portal uses **Settings → Debug**, not the generic Android “Developer options” menu.
+
+1. On the Portal, open **Settings → Debug**.
+2. Tap **ADB Enabled**. Enter your PIN if prompted.
+3. Connect the Portal to your computer with a **USB-C** cable (port on the back of the device).
+4. On the **first** connection, tap **Allow** on the Portal to trust your computer.
+
+**Portal Go:** The USB-C port is under a rubber cover. Remove it with a flathead screwdriver or rigid flat edge before connecting.
+
+### Install `adb` on your computer
+
+Download [Android platform-tools](https://developer.android.com/tools/releases/platform-tools), extract the folder, and add it to your `PATH` (or run `adb` from inside that folder).
 
 ### Verify connection
 
@@ -102,11 +125,20 @@ adb devices
 
 You should see your device with state `device`. Example serial: `818PGF02P0958A25`.
 
-With **hzdb** (Meta Quest dev CLI, also works for Portal):
+If the list is empty:
+
+- Confirm **ADB Enabled** is on in **Settings → Debug**
+- Replug the USB-C cable
+- Tap **Allow** on the Portal if the trust prompt appears
+- Try `adb kill-server && adb start-server`
+
+Optional — Meta VR CLI ([AI Tooling](https://developers.meta.com/horizon/documentation/android-apps/portal-ai-tooling)):
 
 ```bash
-hzdb device list
+metavr device list
 ```
+
+This project’s deploy script also works with **hzdb** (`hzdb device list`) if you already use the Meta Quest dev CLI.
 
 ### Deploy the app
 
@@ -193,7 +225,7 @@ If it does not:
 |---------|-------------|
 | Personal list empty | Sign in again; check list status in settings; ensure anime exist on AniList for that status |
 | OAuth / “needs setup” | Verify `local.properties`, redirect URI `portalani://callback`, rebuild APK |
-| Deploy: no devices | USB debugging on; authorize computer on Portal; try `adb kill-server && adb start-server` |
+| Deploy: no devices | **Settings → Debug → ADB Enabled**; USB-C connected; tap **Allow** on Portal; try `adb kill-server && adb start-server` |
 | Screensaver not starting | Re-run deploy script; check `WRITE_SECURE_SETTINGS` grant |
 | Swipe stuck after list edit | Update to latest build (0.6.3+ fixes slide index reset) |
 | Gradle OOM | `GRADLE_OPTS="-Xmx2g" ./gradlew …` |
@@ -214,6 +246,7 @@ If it does not:
 
 ## Related links
 
+- [Meta Portal setup (official)](https://developers.meta.com/horizon/documentation/android-apps/portal-setup/)
 - [AniList API docs](https://docs.anilist.co/)
 - [AniList GraphQL](https://graphql.anilist.co)
 - [Android DreamService](https://developer.android.com/reference/android/service/dreams/DreamService)

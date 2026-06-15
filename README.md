@@ -5,7 +5,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Current version:** 0.6.6
+**Current version:** 0.6.9
 
 ## Features
 
@@ -52,7 +52,7 @@ portalani/
 
 ## Requirements
 
-- **Portal:** Meta Portal or Portal+ with USB/Wi‑Fi debugging
+- **Portal:** Meta Portal family (see [supported devices](docs/SETUP.md#supported-devices)) with **Settings → Debug → ADB Enabled** and USB-C to your computer
 - **Dev machine:** JDK 11+, Android SDK, `adb` (or [hzdb](https://www.npmjs.com/package/@meta-quest/hzdb))
 - **AniList:** OAuth application ([developer settings](https://anilist.co/settings/developer))
 
