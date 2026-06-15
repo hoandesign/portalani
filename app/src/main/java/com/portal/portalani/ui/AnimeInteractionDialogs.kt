@@ -43,6 +43,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.portal.portalani.R
 import com.portal.portalani.data.ListStatus
+import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.data.SeasonPickerSeason
 import com.portal.portalani.data.SeasonPickerState
 import com.portal.portalani.data.SeasonPickerYear
@@ -272,6 +273,23 @@ private fun yearOptionKey(year: SeasonPickerYear): String =
       SeasonPickerYear.LastYear -> "last"
       is SeasonPickerYear.Specific -> "y${year.year}"
     }
+
+@Composable
+fun PortalTimePickerDialog(
+    title: String,
+    selectedMinutes: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+  val options = remember { PowerPolicy.timePickerOptions() }
+  PortalPickerDialog(
+      title = title,
+      options = options.map { minutes -> minutes.toString() to PowerPolicy.formatMinutesOfDay(minutes) },
+      selectedKey = selectedMinutes.toString(),
+      onDismiss = onDismiss,
+      onSelect = { key -> onSelect(key.toIntOrNull() ?: selectedMinutes) },
+  )
+}
 
 @Composable
 fun PortalCircleIconButton(

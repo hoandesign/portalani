@@ -63,6 +63,10 @@ data class AppSettings(
     val formatFilter: FormatFilter = FormatFilter.ALL,
     val librarySort: LibrarySort = LibrarySort.POPULARITY,
     val seasonKey: String = SeasonSelection.ANY_KEY,
+    val powerMode: PowerMode = PowerMode.ALWAYS_ON,
+    val idleSleepMinutes: Int = PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES,
+    val sleepStartMinutes: Int = PowerPolicy.DEFAULT_SLEEP_START_MINUTES,
+    val sleepEndMinutes: Int = PowerPolicy.DEFAULT_SLEEP_END_MINUTES,
 ) {
   fun libraryFilters(): LibraryFilters =
       LibraryFilters(

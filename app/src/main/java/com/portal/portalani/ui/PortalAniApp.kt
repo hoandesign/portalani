@@ -55,6 +55,8 @@ import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
+import com.portal.portalani.data.PowerMode
+import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.data.SeasonSelection
 import com.portal.portalani.data.SourceMode
 import androidx.lifecycle.Lifecycle
@@ -85,7 +87,12 @@ fun PortalAniApp(
     onSetFormatFilter: (FormatFilter) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
+    onSetPowerMode: (PowerMode) -> Unit = {},
+    onSetIdleSleepMinutes: (Int) -> Unit = {},
+    onSetSleepStartMinutes: (Int) -> Unit = {},
+    onSetSleepEndMinutes: (Int) -> Unit = {},
     onSlideIndexChanged: (Int) -> Unit = {},
+    onUserInteraction: () -> Unit = {},
 ) {
   var showSettings by remember { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
@@ -128,6 +135,7 @@ fun PortalAniApp(
                 onSetAnimeListStatus = onSetAnimeListStatus,
                 onRemoveFromList = onRemoveFromList,
                 onSlideIndexChanged = onSlideIndexChanged,
+                onUserInteraction = onUserInteraction,
             )
         is UiState.Error ->
             ErrorScreen(
@@ -153,6 +161,11 @@ fun PortalAniApp(
           onSetFormatFilter = onSetFormatFilter,
           onSetLibrarySort = onSetLibrarySort,
           onSetSeasonKey = onSetSeasonKey,
+          onSetPowerMode = onSetPowerMode,
+          onSetIdleSleepMinutes = onSetIdleSleepMinutes,
+          onSetSleepStartMinutes = onSetSleepStartMinutes,
+          onSetSleepEndMinutes = onSetSleepEndMinutes,
+          onUserInteraction = onUserInteraction,
       )
     }
 
@@ -265,6 +278,7 @@ private fun SlideshowScreen(
     onSetAnimeListStatus: (Int, ListStatus) -> Unit,
     onRemoveFromList: (Int) -> Unit,
     onSlideIndexChanged: (Int) -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
   var orderedIds by remember(orderResetToken, shuffle) {
     mutableStateOf(buildSlideOrder(slides.map { it.id }, shuffle, orderResetToken))
@@ -381,12 +395,14 @@ private fun SlideshowScreen(
           Modifier.fillMaxSize()
               .pointerInput(order.size, safeIndex) {
                 detectHorizontalDragGestures { _, drag ->
+                  onUserInteraction()
                   if (drag < -45f) next()
                   if (drag > 45f) previous()
                 }
               }
               .pointerInput(Unit) {
                 detectTapGestures { offset ->
+                  onUserInteraction()
                   if (offset.x < size.width * 0.2f) previous()
                   else if (offset.x > size.width * 0.8f) next()
                   else onToggleSettings()
@@ -510,22 +526,32 @@ private fun SettingsPanel(
     onSetFormatFilter: (FormatFilter) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
+    onSetPowerMode: (PowerMode) -> Unit,
+    onSetIdleSleepMinutes: (Int) -> Unit,
+    onSetSleepStartMinutes: (Int) -> Unit,
+    onSetSleepEndMinutes: (Int) -> Unit,
+    onUserInteraction: () -> Unit,
 ) {
   var statusMenuOpen by remember { mutableStateOf(false) }
   var formatMenuOpen by remember { mutableStateOf(false) }
   var sortMenuOpen by remember { mutableStateOf(false) }
   var seasonMenuOpen by remember { mutableStateOf(false) }
+  var sleepStartMenuOpen by remember { mutableStateOf(false) }
+  var sleepEndMenuOpen by remember { mutableStateOf(false) }
   val intervalSeconds = (settings.intervalMs / 1000L).toInt()
   val listStatusOptions = ListStatus.entries.map { status -> status.name to statusLabel(status) }
   val formatOptions = FormatFilter.entries.map { format -> format.name to format.label }
   val sortOptions = LibrarySort.entries.map { sort -> sort.name to sort.label }
-  val anyMenuOpen = statusMenuOpen || formatMenuOpen || sortMenuOpen || seasonMenuOpen
+  val anyMenuOpen =
+      statusMenuOpen || formatMenuOpen || sortMenuOpen || seasonMenuOpen || sleepStartMenuOpen || sleepEndMenuOpen
 
   BackHandler(enabled = anyMenuOpen) {
     statusMenuOpen = false
     formatMenuOpen = false
     sortMenuOpen = false
     seasonMenuOpen = false
+    sleepStartMenuOpen = false
+    sleepEndMenuOpen = false
   }
 
   BackHandler(enabled = !anyMenuOpen) { onDismiss() }
@@ -652,10 +678,105 @@ private fun SettingsPanel(
       }
 
       Spacer(Modifier.height(24.dp))
+      SettingsSectionTitle(stringResource(R.string.power_settings))
+      Spacer(Modifier.height(8.dp))
+      Text(
+          stringResource(R.string.power_hint),
+          color = PortalAniColors.TextMuted,
+          fontSize = 15.sp,
+          lineHeight = 21.sp,
+      )
+      Spacer(Modifier.height(12.dp))
+      PortalSegmentedControl(
+          options =
+              listOf(
+                  stringResource(R.string.power_always_on),
+                  stringResource(R.string.power_idle_sleep),
+                  stringResource(R.string.power_scheduled_sleep),
+              ),
+          selectedIndex =
+              when (settings.powerMode) {
+                PowerMode.ALWAYS_ON -> 0
+                PowerMode.IDLE_SLEEP -> 1
+                PowerMode.SCHEDULED_SLEEP -> 2
+              },
+          onSelect = { index ->
+            onUserInteraction()
+            onSetPowerMode(
+                when (index) {
+                  0 -> PowerMode.ALWAYS_ON
+                  1 -> PowerMode.IDLE_SLEEP
+                  else -> PowerMode.SCHEDULED_SLEEP
+                },
+            )
+          },
+      )
+
+      if (settings.powerMode == PowerMode.IDLE_SLEEP) {
+        Spacer(Modifier.height(14.dp))
+        Text(
+            stringResource(R.string.power_idle_after),
+            color = PortalAniColors.TextSecondary,
+            fontSize = 15.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PowerPolicy.IDLE_SLEEP_OPTIONS_MINUTES.take(4).forEach { minutes ->
+              PortalChoiceChip(
+                  label = PowerPolicy.formatIdleDuration(minutes),
+                  selected = settings.idleSleepMinutes == minutes,
+                  onClick = {
+                    onUserInteraction()
+                    onSetIdleSleepMinutes(minutes)
+                  },
+              )
+            }
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PowerPolicy.IDLE_SLEEP_OPTIONS_MINUTES.drop(4).forEach { minutes ->
+              PortalChoiceChip(
+                  label = PowerPolicy.formatIdleDuration(minutes),
+                  selected = settings.idleSleepMinutes == minutes,
+                  onClick = {
+                    onUserInteraction()
+                    onSetIdleSleepMinutes(minutes)
+                  },
+              )
+            }
+          }
+        }
+      }
+
+      if (settings.powerMode == PowerMode.SCHEDULED_SLEEP) {
+        Spacer(Modifier.height(14.dp))
+        PortalFilterField(
+            label = stringResource(R.string.power_sleep_from),
+            value = PowerPolicy.formatMinutesOfDay(settings.sleepStartMinutes),
+            onClick = {
+              onUserInteraction()
+              sleepStartMenuOpen = true
+            },
+        )
+        Spacer(Modifier.height(12.dp))
+        PortalFilterField(
+            label = stringResource(R.string.power_wake_at),
+            value = PowerPolicy.formatMinutesOfDay(settings.sleepEndMinutes),
+            onClick = {
+              onUserInteraction()
+              sleepEndMenuOpen = true
+            },
+        )
+      }
+
+      Spacer(Modifier.height(24.dp))
       SettingRow(stringResource(R.string.shuffle)) {
         Switch(
             checked = settings.shuffle,
-            onCheckedChange = onSetShuffle,
+            onCheckedChange = {
+              onUserInteraction()
+              onSetShuffle(it)
+            },
             colors =
                 androidx.compose.material3.SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
@@ -674,7 +795,10 @@ private fun SettingsPanel(
           PortalChoiceChip(
               label = "$seconds s",
               selected = intervalSeconds == seconds,
-              onClick = { onSetIntervalSeconds(seconds) },
+              onClick = {
+                onUserInteraction()
+                onSetIntervalSeconds(seconds)
+              },
           )
         }
       }
@@ -720,6 +844,24 @@ private fun SettingsPanel(
         initialState = SeasonSelection.decode(settings.seasonKey),
         onDismiss = { seasonMenuOpen = false },
         onApply = onSetSeasonKey,
+    )
+  }
+
+  if (sleepStartMenuOpen) {
+    PortalTimePickerDialog(
+        title = stringResource(R.string.power_sleep_from),
+        selectedMinutes = settings.sleepStartMinutes,
+        onDismiss = { sleepStartMenuOpen = false },
+        onSelect = onSetSleepStartMinutes,
+    )
+  }
+
+  if (sleepEndMenuOpen) {
+    PortalTimePickerDialog(
+        title = stringResource(R.string.power_wake_at),
+        selectedMinutes = settings.sleepEndMinutes,
+        onDismiss = { sleepEndMenuOpen = false },
+        onSelect = onSetSleepEndMinutes,
     )
   }
 }

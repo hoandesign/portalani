@@ -13,6 +13,8 @@ import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
+import com.portal.portalani.data.PowerMode
+import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.data.SettingsStore
 import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.TokenStore
@@ -206,6 +208,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   fun setSeasonKey(key: String) {
     updateSettings(_settings.value.copy(seasonKey = key))
     refresh()
+  }
+
+  fun setPowerMode(mode: PowerMode) {
+    updateSettings(_settings.value.copy(powerMode = mode))
+  }
+
+  fun setIdleSleepMinutes(minutes: Int) {
+    val allowed = PowerPolicy.IDLE_SLEEP_OPTIONS_MINUTES
+    val next = allowed.minByOrNull { kotlin.math.abs(it - minutes) } ?: PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES
+    updateSettings(_settings.value.copy(idleSleepMinutes = next))
+  }
+
+  fun setSleepStartMinutes(minutes: Int) {
+    updateSettings(_settings.value.copy(sleepStartMinutes = minutes.coerceIn(0, 24 * 60 - 1)))
+  }
+
+  fun setSleepEndMinutes(minutes: Int) {
+    updateSettings(_settings.value.copy(sleepEndMinutes = minutes.coerceIn(0, 24 * 60 - 1)))
   }
 
   fun onSlideIndexChanged(index: Int) {

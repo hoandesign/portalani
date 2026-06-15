@@ -216,6 +216,7 @@ If it does not:
 | Seconds per slide | Auto-advance interval (5–120 s) |
 | List status | Which AniList list to show (Personal mode) |
 | Format / Sort / Season | Catalog filters (Full library mode) |
+| Power | Always on (default), sleep after idle, or off during quiet hours (default 10 PM–7 AM) |
 
 ---
 

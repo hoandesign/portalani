@@ -3,18 +3,23 @@ package com.portal.portalani
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.ui.PortalAniApp
 import com.portal.portalani.ui.PortalAniTheme
+import com.portal.portalani.ui.PowerScreenEffect
 
 class MainActivity : ComponentActivity() {
   private val vm: MainViewModel by viewModels()
@@ -22,7 +27,6 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enterImmersive()
-    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
     onBackPressedDispatcher.addCallback(
         this,
@@ -33,6 +37,8 @@ class MainActivity : ComponentActivity() {
         },
     )
 
+    val launchedFromDream = intent.getBooleanExtra(EXTRA_DREAM_MODE, false)
+
     setContent {
       PortalAniTheme {
         val state by vm.state.collectAsStateWithLifecycle()
@@ -40,30 +46,49 @@ class MainActivity : ComponentActivity() {
         val viewerName by vm.viewerName.collectAsStateWithLifecycle()
         val isSignedIn by vm.isSignedIn.collectAsStateWithLifecycle()
         val userMessage by vm.userMessage.collectAsStateWithLifecycle()
+        var lastUserInteractionMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+        val slideshowAllowed = PowerPolicy.shouldRunSlideshow(settings)
+
+        LaunchedEffect(launchedFromDream, settings.powerMode, settings.sleepStartMinutes, settings.sleepEndMinutes) {
+          if (launchedFromDream && !slideshowAllowed) {
+            finish()
+          }
+        }
+
+        PowerScreenEffect(
+            settings = settings,
+            lastUserInteractionMs = lastUserInteractionMs,
+            enabled = slideshowAllowed,
+        )
 
         PortalAniApp(
-          state = state,
-          settings = settings,
-          viewerName = viewerName,
-          isSignedIn = isSignedIn,
-          userMessage = userMessage,
-          onSignIn = vm::signIn,
-          onSignOut = vm::signOut,
-          onRetry = vm::refresh,
-          onUseLibrary = vm::useLibrary,
-          onClearUserMessage = vm::clearUserMessage,
-          onSetUserScore = vm::setUserScore,
-          onToggleFavourite = vm::toggleFavourite,
-          onSetAnimeListStatus = vm::setAnimeListStatus,
-          onRemoveFromList = vm::removeFromList,
-          onSetShuffle = vm::setShuffle,
-          onSetIntervalSeconds = vm::setIntervalSeconds,
-          onSetSourceMode = vm::setSourceMode,
-          onSetListStatus = vm::setListStatus,
-          onSetFormatFilter = vm::setFormatFilter,
-          onSetLibrarySort = vm::setLibrarySort,
-          onSetSeasonKey = vm::setSeasonKey,
-          onSlideIndexChanged = vm::onSlideIndexChanged,
+            state = state,
+            settings = settings,
+            viewerName = viewerName,
+            isSignedIn = isSignedIn,
+            userMessage = userMessage,
+            onSignIn = vm::signIn,
+            onSignOut = vm::signOut,
+            onRetry = vm::refresh,
+            onUseLibrary = vm::useLibrary,
+            onClearUserMessage = vm::clearUserMessage,
+            onSetUserScore = vm::setUserScore,
+            onToggleFavourite = vm::toggleFavourite,
+            onSetAnimeListStatus = vm::setAnimeListStatus,
+            onRemoveFromList = vm::removeFromList,
+            onSetShuffle = vm::setShuffle,
+            onSetIntervalSeconds = vm::setIntervalSeconds,
+            onSetSourceMode = vm::setSourceMode,
+            onSetListStatus = vm::setListStatus,
+            onSetFormatFilter = vm::setFormatFilter,
+            onSetLibrarySort = vm::setLibrarySort,
+            onSetSeasonKey = vm::setSeasonKey,
+            onSetPowerMode = vm::setPowerMode,
+            onSetIdleSleepMinutes = vm::setIdleSleepMinutes,
+            onSetSleepStartMinutes = vm::setSleepStartMinutes,
+            onSetSleepEndMinutes = vm::setSleepEndMinutes,
+            onSlideIndexChanged = vm::onSlideIndexChanged,
+            onUserInteraction = { lastUserInteractionMs = System.currentTimeMillis() },
         )
       }
     }

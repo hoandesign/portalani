@@ -10,6 +10,15 @@
     <string name="shuffle">Shuffle slides</string>
     <string name="use_full_library">Browse full library</string>
     <string name="interval_seconds">Seconds per slide</string>
+    <string name="power_settings">Power</string>
+    <string name="power_hint">Control when the Portal is allowed to sleep while Portal Ani is open.</string>
+    <string name="power_always_on">Always on</string>
+    <string name="power_idle_sleep">Sleep when idle</string>
+    <string name="power_scheduled_sleep">Off when sleeping</string>
+    <string name="power_idle_after">Sleep after no touch</string>
+    <string name="power_sleep_from">Sleep from</string>
+    <string name="power_wake_at">Wake at</string>
+    <string name="power_pick_time">Pick a time</string>
     <string name="list_status">List status</string>
     <string name="status_current">Currently watching</string>
     <string name="status_planning">Planning</string>

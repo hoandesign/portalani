@@ -5,7 +5,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Current version:** 0.6.9
+**Current version:** 0.7.0
 
 ## Features
 
@@ -15,6 +15,7 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 - AniList OAuth sign-in (rate, favourite, add to list)
 - All-time rank badges, community score, YouTube trailers
 - Shuffle and configurable slide interval
+- Power modes: always on, sleep when idle (30 min–8 h), or scheduled quiet hours (default 10 PM–7 AM)
 - Offline cache of the last loaded feed
 - Registers as Portal idle screensaver (`DreamService`)
 
