@@ -30,6 +30,9 @@
     <string name="format_filter">Format</string>
     <string name="sort_by">Sort by</string>
     <string name="season_filter">Season</string>
+    <string name="season_picker_season">Season</string>
+    <string name="season_picker_year">Year</string>
+    <string name="apply">Apply</string>
     <string name="rank_highest_rated">#%1$d highest rated all time</string>
     <string name="rank_most_popular">#%1$d most popular all time</string>
     <string name="rank_rated_label">Highest rated</string>

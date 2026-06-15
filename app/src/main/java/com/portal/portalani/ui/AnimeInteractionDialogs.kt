@@ -43,6 +43,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.portal.portalani.R
 import com.portal.portalani.data.ListStatus
+import com.portal.portalani.data.SeasonPickerSeason
+import com.portal.portalani.data.SeasonPickerState
+import com.portal.portalani.data.SeasonPickerYear
+import com.portal.portalani.data.SeasonSelection
 import kotlin.math.roundToInt
 
 @Composable
@@ -61,58 +65,213 @@ fun PortalPickerDialog(
         modifier =
             Modifier.padding(horizontal = 48.dp)
                 .fillMaxWidth()
-                .widthIn(max = 520.dp)
-                .heightIn(max = 420.dp)
+                .widthIn(max = 560.dp)
+                .heightIn(max = 460.dp)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
                 .padding(horizontal = 22.dp, vertical = 20.dp),
     ) {
-      Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(title, color = PortalAniColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        PortalCircleIconButton(
-            icon = PortalIcons.Close,
-            contentDescription = stringResource(R.string.close),
-            onClick = onDismiss,
-        )
-      }
+      PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
       Spacer(Modifier.height(12.dp))
       LazyColumn(
-          modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+          modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         items(options, key = { it.first }) { (key, label) ->
-          val selected = key == selectedKey
-          Surface(
+          PortalPickerOptionRow(
+              label = label,
+              selected = key == selectedKey,
               onClick = {
                 onSelect(key)
                 onDismiss()
               },
-              modifier = Modifier.fillMaxWidth(),
-              shape = PortalAniShapes.Field,
-              color = if (selected) PortalAniColors.AccentSoft else Color(0x10FFFFFF),
-              border =
-                  androidx.compose.foundation.BorderStroke(
-                      1.dp,
-                      if (selected) PortalAniColors.Accent else PortalAniColors.Border,
-                  ),
-          ) {
-            Text(
-                text = label,
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                color = if (selected) PortalAniColors.Accent else PortalAniColors.TextPrimary,
-                fontSize = 17.sp,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            )
-          }
+          )
         }
       }
     }
   }
 }
+
+@Composable
+fun PortalSeasonPickerDialog(
+    title: String,
+    initialState: SeasonPickerState,
+    onDismiss: () -> Unit,
+    onApply: (String) -> Unit,
+) {
+  var draft by remember(initialState) { mutableStateOf(initialState) }
+  val nowYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) }
+  val seasonOptions = remember { SeasonSelection.seasonColumnOptions() }
+  val yearOptions = remember(nowYear) { SeasonSelection.yearColumnOptions(nowYear) }
+  val yearColumnEnabled = !draft.season.ignoresYear
+
+  Dialog(
+      onDismissRequest = onDismiss,
+      properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Column(
+        modifier =
+            Modifier.padding(horizontal = 40.dp)
+                .fillMaxWidth()
+                .widthIn(max = 720.dp)
+                .heightIn(max = 520.dp)
+                .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
+                .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+    ) {
+      PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
+      Spacer(Modifier.height(10.dp))
+      Text(
+          text = SeasonSelection.labelFor(draft),
+          color = PortalAniColors.Accent,
+          fontSize = 17.sp,
+          fontWeight = FontWeight.SemiBold,
+      )
+      Spacer(Modifier.height(14.dp))
+      Row(
+          modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+              text = stringResource(R.string.season_picker_season),
+              color = PortalAniColors.TextMuted,
+              fontSize = 14.sp,
+              fontWeight = FontWeight.Medium,
+          )
+          Spacer(Modifier.height(8.dp))
+          LazyColumn(
+              modifier = Modifier.fillMaxWidth().heightIn(max = 290.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            items(seasonOptions, key = { it.name }) { season ->
+              PortalPickerOptionRow(
+                  label = season.label,
+                  selected = draft.season == season,
+                  onClick = {
+                    draft =
+                        if (season.ignoresYear) {
+                          SeasonPickerState(season, SeasonPickerYear.Any)
+                        } else {
+                          draft.copy(season = season)
+                        }
+                  },
+                  compact = true,
+              )
+            }
+          }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+              text = stringResource(R.string.season_picker_year),
+              color = if (yearColumnEnabled) PortalAniColors.TextMuted else PortalAniColors.TextMuted.copy(alpha = 0.45f),
+              fontSize = 14.sp,
+              fontWeight = FontWeight.Medium,
+          )
+          Spacer(Modifier.height(8.dp))
+          LazyColumn(
+              modifier = Modifier.fillMaxWidth().heightIn(max = 290.dp),
+              verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            items(yearOptions, key = { yearOptionKey(it) }) { year ->
+              PortalPickerOptionRow(
+                  label = year.label(nowYear),
+                  selected = draft.year::class == year::class &&
+                      when (year) {
+                        is SeasonPickerYear.Specific ->
+                            draft.year is SeasonPickerYear.Specific &&
+                                (draft.year as SeasonPickerYear.Specific).year == year.year
+                        else -> draft.year == year
+                      },
+                  enabled = yearColumnEnabled,
+                  onClick = { draft = draft.copy(year = year) },
+                  compact = true,
+              )
+            }
+          }
+        }
+      }
+      Spacer(Modifier.height(16.dp))
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.End,
+      ) {
+        PortalPrimaryButton(
+            text = stringResource(R.string.apply),
+            onClick = {
+              onApply(SeasonSelection.encode(draft))
+              onDismiss()
+            },
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun PortalPickerDialogHeader(title: String, onDismiss: () -> Unit) {
+  Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(title, color = PortalAniColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+    PortalCircleIconButton(
+        icon = PortalIcons.Close,
+        contentDescription = stringResource(R.string.close),
+        onClick = onDismiss,
+    )
+  }
+}
+
+@Composable
+private fun PortalPickerOptionRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    compact: Boolean = false,
+) {
+  val colors =
+      when {
+        !enabled -> PortalAniColors.TextMuted.copy(alpha = 0.45f) to Color(0x08FFFFFF)
+        selected -> PortalAniColors.Accent to PortalAniColors.AccentSoft
+        else -> PortalAniColors.TextPrimary to Color(0x10FFFFFF)
+      }
+  Surface(
+      onClick = onClick,
+      enabled = enabled,
+      modifier = modifier.fillMaxWidth(),
+      shape = PortalAniShapes.Field,
+      color = colors.second,
+      border =
+          androidx.compose.foundation.BorderStroke(
+              1.dp,
+              when {
+                !enabled -> PortalAniColors.Border.copy(alpha = 0.35f)
+                selected -> PortalAniColors.Accent
+                else -> PortalAniColors.Border
+              },
+          ),
+  ) {
+    Text(
+        text = label,
+        modifier = Modifier.padding(horizontal = 18.dp, vertical = if (compact) 12.dp else 14.dp),
+        color = colors.first,
+        fontSize = if (compact) 16.sp else 17.sp,
+        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+    )
+  }
+}
+
+private fun yearOptionKey(year: SeasonPickerYear): String =
+    when (year) {
+      SeasonPickerYear.Any -> "any"
+      SeasonPickerYear.ThisYear -> "this"
+      SeasonPickerYear.LastYear -> "last"
+      is SeasonPickerYear.Specific -> "y${year.year}"
+    }
 
 @Composable
 fun PortalCircleIconButton(
@@ -323,56 +482,26 @@ fun ListStatusDialog(
             Modifier.padding(horizontal = 48.dp)
                 .fillMaxWidth()
                 .widthIn(max = 560.dp)
+                .heightIn(max = 520.dp)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
                 .padding(horizontal = 24.dp, vertical = 22.dp),
     ) {
-      Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(title, color = PortalAniColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        TextButton(onClick = onDismiss) {
-          Text(stringResource(R.string.close), color = PortalAniColors.TextSecondary)
-        }
-      }
+      PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
       Spacer(Modifier.height(8.dp))
       Text(stringResource(R.string.list_status_dialog_hint), color = PortalAniColors.TextMuted, fontSize = 15.sp)
       Spacer(Modifier.height(16.dp))
-      ListStatus.entries.forEach { status ->
-        val selected = currentStatus == status
-        Surface(
-            onClick = { onSelect(status) },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
-            shape = PortalAniShapes.Field,
-            color = if (selected) PortalAniColors.AccentSoft else Color(0x10FFFFFF),
-            border =
-                androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (selected) PortalAniColors.Accent else PortalAniColors.Border,
-                ),
-        ) {
-          Row(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-                listStatusLabel(status),
-                color = if (selected) PortalAniColors.Accent else PortalAniColors.TextPrimary,
-                fontSize = 18.sp,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            )
-            if (selected) {
-              Icon(
-                  imageVector = PortalIcons.Check,
-                  contentDescription = null,
-                  tint = PortalAniColors.Accent,
-                  modifier = Modifier.size(22.dp),
-              )
-            }
-          }
+      LazyColumn(
+          modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        items(ListStatus.entries, key = { it.name }) { status ->
+          val selected = currentStatus == status
+          PortalPickerOptionRow(
+              label = listStatusLabel(status),
+              selected = selected,
+              onClick = { onSelect(status) },
+          )
         }
       }
       if (onRemove != null && currentStatus != null) {

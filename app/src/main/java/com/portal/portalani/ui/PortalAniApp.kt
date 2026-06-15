@@ -22,8 +22,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -518,7 +516,9 @@ private fun SettingsPanel(
   var sortMenuOpen by remember { mutableStateOf(false) }
   var seasonMenuOpen by remember { mutableStateOf(false) }
   val intervalSeconds = (settings.intervalMs / 1000L).toInt()
-  val seasonOptions = remember { SeasonSelection.allOptions() }
+  val listStatusOptions = ListStatus.entries.map { status -> status.name to statusLabel(status) }
+  val formatOptions = FormatFilter.entries.map { format -> format.name to format.label }
+  val sortOptions = LibrarySort.entries.map { sort -> sort.name to sort.label }
   val anyMenuOpen = statusMenuOpen || formatMenuOpen || sortMenuOpen || seasonMenuOpen
 
   BackHandler(enabled = anyMenuOpen) {
@@ -617,24 +617,11 @@ private fun SettingsPanel(
           )
         }
         Spacer(Modifier.height(18.dp))
-        Box {
-          PortalFilterField(
-              label = stringResource(R.string.list_status),
-              value = statusLabel(settings.listStatus),
-              onClick = { statusMenuOpen = true },
-          )
-          DropdownMenu(expanded = statusMenuOpen, onDismissRequest = { statusMenuOpen = false }) {
-            ListStatus.entries.forEach { status ->
-              DropdownMenuItem(
-                  text = { Text(statusLabel(status)) },
-                  onClick = {
-                    statusMenuOpen = false
-                    onSetListStatus(status)
-                  },
-              )
-            }
-          }
-        }
+        PortalFilterField(
+            label = stringResource(R.string.list_status),
+            value = statusLabel(settings.listStatus),
+            onClick = { statusMenuOpen = true },
+        )
       } else {
         Text(
             stringResource(R.string.library_filters),
@@ -643,44 +630,18 @@ private fun SettingsPanel(
         )
         Spacer(Modifier.height(14.dp))
 
-        Box {
-          PortalFilterField(
-              label = stringResource(R.string.format_filter),
-              value = settings.formatFilter.label,
-              onClick = { formatMenuOpen = true },
-          )
-          DropdownMenu(expanded = formatMenuOpen, onDismissRequest = { formatMenuOpen = false }) {
-            FormatFilter.entries.forEach { format ->
-              DropdownMenuItem(
-                  text = { Text(format.label) },
-                  onClick = {
-                    formatMenuOpen = false
-                    onSetFormatFilter(format)
-                  },
-              )
-            }
-          }
-        }
+        PortalFilterField(
+            label = stringResource(R.string.format_filter),
+            value = settings.formatFilter.label,
+            onClick = { formatMenuOpen = true },
+        )
 
         Spacer(Modifier.height(12.dp))
-        Box {
-          PortalFilterField(
-              label = stringResource(R.string.sort_by),
-              value = settings.librarySort.label,
-              onClick = { sortMenuOpen = true },
-          )
-          DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
-            LibrarySort.entries.forEach { sort ->
-              DropdownMenuItem(
-                  text = { Text(sort.label) },
-                  onClick = {
-                    sortMenuOpen = false
-                    onSetLibrarySort(sort)
-                  },
-              )
-            }
-          }
-        }
+        PortalFilterField(
+            label = stringResource(R.string.sort_by),
+            value = settings.librarySort.label,
+            onClick = { sortMenuOpen = true },
+        )
 
         Spacer(Modifier.height(12.dp))
         PortalFilterField(
@@ -723,13 +684,42 @@ private fun SettingsPanel(
     }
   }
 
-  if (seasonMenuOpen) {
+  if (statusMenuOpen) {
     PortalPickerDialog(
+        title = stringResource(R.string.list_status),
+        options = listStatusOptions,
+        selectedKey = settings.listStatus.name,
+        onDismiss = { statusMenuOpen = false },
+        onSelect = { key -> onSetListStatus(ListStatus.valueOf(key)) },
+    )
+  }
+
+  if (formatMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.format_filter),
+        options = formatOptions,
+        selectedKey = settings.formatFilter.name,
+        onDismiss = { formatMenuOpen = false },
+        onSelect = { key -> onSetFormatFilter(FormatFilter.valueOf(key)) },
+    )
+  }
+
+  if (sortMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.sort_by),
+        options = sortOptions,
+        selectedKey = settings.librarySort.name,
+        onDismiss = { sortMenuOpen = false },
+        onSelect = { key -> onSetLibrarySort(LibrarySort.valueOf(key)) },
+    )
+  }
+
+  if (seasonMenuOpen) {
+    PortalSeasonPickerDialog(
         title = stringResource(R.string.season_filter),
-        options = seasonOptions,
-        selectedKey = settings.seasonKey,
+        initialState = SeasonSelection.decode(settings.seasonKey),
         onDismiss = { seasonMenuOpen = false },
-        onSelect = onSetSeasonKey,
+        onApply = onSetSeasonKey,
     )
   }
 }
