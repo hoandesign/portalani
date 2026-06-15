@@ -767,6 +767,13 @@ private fun SettingsPanel(
               sleepEndMenuOpen = true
             },
         )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.power_scheduled_hint),
+            color = PortalAniColors.TextMuted,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+        )
       }
 
       Spacer(Modifier.height(24.dp))
@@ -815,6 +822,8 @@ private fun SettingsPanel(
         selectedKey = settings.listStatus.name,
         onDismiss = { statusMenuOpen = false },
         onSelect = { key -> onSetListStatus(ListStatus.valueOf(key)) },
+        iconForKey = { key -> ListStatus.valueOf(key).icon() },
+        tintForKey = { key -> ListStatus.valueOf(key).accentColor() },
     )
   }
 

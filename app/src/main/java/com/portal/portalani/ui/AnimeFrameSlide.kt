@@ -232,6 +232,11 @@ private fun AnimeInfoPanel(
       verticalArrangement = Arrangement.Center,
       horizontalAlignment = Alignment.Start,
   ) {
+    if (slide.isOnList && slide.listStatus != null) {
+      ListStatusEyebrow(status = slide.listStatus)
+      Spacer(Modifier.height(10.dp))
+    }
+
     Text(
         text = slide.title,
         color = PortalAniColors.TextPrimary,
@@ -255,34 +260,17 @@ private fun AnimeInfoPanel(
       )
     }
 
-    Spacer(Modifier.height(20.dp))
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-      slide.averageScore?.let { score ->
-        CommunityScorePill(score = score / 10.0)
-      }
-      if (slide.isOnList && slide.listStatus != null) {
-        ListStatusPill(status = slide.listStatus)
-      }
-    }
-
-    if (meta.isNotBlank()) {
-      Spacer(Modifier.height(12.dp))
-      Text(
-          text = meta,
-          color = PortalAniColors.TextSecondary,
-          fontSize = 16.sp,
-          letterSpacing = 0.2.sp,
-          style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.6f), blurRadius = 8f)),
+    if (slide.averageScore != null || meta.isNotBlank()) {
+      Spacer(Modifier.height(16.dp))
+      ScoreMetaRow(
+          score = slide.averageScore?.let { it / 10.0 },
+          meta = meta,
       )
     }
 
     if (slide.ratedRankAllTime != null || slide.popularRankAllTime != null) {
       val dualRanks = slide.ratedRankAllTime != null && slide.popularRankAllTime != null
-      Spacer(Modifier.height(16.dp))
+      Spacer(Modifier.height(14.dp))
       Row(
           modifier =
               Modifier.widthIn(max = 760.dp).then(if (dualRanks) Modifier.fillMaxWidth() else Modifier),
@@ -312,33 +300,8 @@ private fun AnimeInfoPanel(
       }
     }
 
-    if (slide.genres.isNotEmpty()) {
-      Spacer(Modifier.height(14.dp))
-      FlowRow(
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.widthIn(max = 760.dp),
-      ) {
-        slide.genres.take(6).forEach { genre ->
-          Surface(
-              color = Color(0x12FFFFFF),
-              shape = PortalAniShapes.Pill,
-              border = androidx.compose.foundation.BorderStroke(1.dp, PortalAniColors.Border),
-          ) {
-            Text(
-                text = genre,
-                modifier = Modifier.padding(horizontal = 13.dp, vertical = 6.dp),
-                color = PortalAniColors.TextSecondary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-            )
-          }
-        }
-      }
-    }
-
     if (!synopsis.isNullOrBlank()) {
-      Spacer(Modifier.height(16.dp))
+      Spacer(Modifier.height(14.dp))
       Text(
           text = synopsis,
           color = PortalAniColors.TextMuted,
@@ -350,6 +313,19 @@ private fun AnimeInfoPanel(
           modifier = Modifier.widthIn(max = 720.dp),
           style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.55f), blurRadius = 8f)),
       )
+    }
+
+    if (slide.genres.isNotEmpty()) {
+      Spacer(Modifier.height(14.dp))
+      FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.widthIn(max = 760.dp),
+      ) {
+        slide.genres.take(6).forEach { genre ->
+          GenreTagChip(label = genre)
+        }
+      }
     }
 
     if (hasActions) {
@@ -391,46 +367,106 @@ private fun AnimeInfoPanel(
 }
 
 @Composable
-private fun CommunityScorePill(score: Double) {
+private fun ListStatusEyebrow(status: ListStatus) {
+  val accent = status.accentColor()
   Surface(
-      color = PortalAniColors.Gold.copy(alpha = 0.16f),
-      shape = PortalAniShapes.Chip,
-      border = androidx.compose.foundation.BorderStroke(1.dp, PortalAniColors.Gold.copy(alpha = 0.42f)),
+      color = accent.copy(alpha = 0.14f),
+      shape = PortalAniShapes.Pill,
+      border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.42f)),
   ) {
     Row(
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       Icon(
-          imageVector = PortalIcons.ScoreStar,
+          imageVector = status.icon(),
           contentDescription = null,
-          tint = PortalAniColors.Gold,
-          modifier = Modifier.size(16.dp),
+          tint = accent,
+          modifier = Modifier.size(14.dp),
       )
       Text(
-          text = stringResource(R.string.community_score, score),
-          color = PortalAniColors.Gold,
-          fontSize = 17.sp,
-          fontWeight = FontWeight.SemiBold,
+          text = listStatusLabel(status),
+          color = accent,
+          fontSize = 12.sp,
+          fontWeight = FontWeight.Bold,
+          letterSpacing = 0.4.sp,
       )
     }
   }
 }
 
 @Composable
-private fun ListStatusPill(status: ListStatus) {
+private fun ScoreMetaRow(score: Double?, meta: String) {
   Surface(
-      color = PortalAniColors.AccentSoft,
+      color = Color(0x10FFFFFF),
+      shape = PortalAniShapes.Chip,
+      border = androidx.compose.foundation.BorderStroke(1.dp, PortalAniColors.Border),
+  ) {
+    Row(
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      score?.let { CommunityScoreInline(score = it) }
+      if (score != null && meta.isNotBlank()) {
+        Box(
+            modifier =
+                Modifier.size(width = 1.dp, height = 18.dp)
+                    .background(PortalAniColors.BorderStrong),
+        )
+      }
+      if (meta.isNotBlank()) {
+        Text(
+            text = meta,
+            color = PortalAniColors.TextSecondary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.15.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+            style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.45f), blurRadius = 6f)),
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun CommunityScoreInline(score: Double) {
+  Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(5.dp),
+  ) {
+    Icon(
+        imageVector = PortalIcons.ScoreStar,
+        contentDescription = null,
+        tint = PortalAniColors.Gold,
+        modifier = Modifier.size(16.dp),
+    )
+    Text(
+        text = stringResource(R.string.community_score, score),
+        color = PortalAniColors.Gold,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+    )
+  }
+}
+
+@Composable
+private fun GenreTagChip(label: String) {
+  Surface(
+      color = Color(0x12FFFFFF),
       shape = PortalAniShapes.Pill,
-      border = androidx.compose.foundation.BorderStroke(1.dp, PortalAniColors.Accent.copy(alpha = 0.35f)),
+      border = androidx.compose.foundation.BorderStroke(1.dp, PortalAniColors.Border),
   ) {
     Text(
-        text = listStatusLabel(status),
-        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-        color = PortalAniColors.Accent,
+        text = label,
+        modifier = Modifier.padding(horizontal = 13.dp, vertical = 6.dp),
+        color = PortalAniColors.TextSecondary,
         fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Medium,
     )
   }
 }
@@ -551,6 +587,7 @@ private fun buildMetaLine(slide: AnimeSlide): String =
             slide.format?.replace('_', ' ')?.lowercase()?.replaceFirstChar { it.uppercase() },
             slide.seasonYear?.toString(),
             slide.episodes?.let { "$it eps" },
+            slide.studio,
             slide.status?.replace('_', ' ')?.lowercase()?.replaceFirstChar { it.uppercase() },
         )
         .joinToString(" · ")

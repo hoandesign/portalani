@@ -13,30 +13,36 @@ import kotlinx.coroutines.delay
 fun PowerScreenEffect(
     settings: AppSettings,
     lastUserInteractionMs: Long,
-    enabled: Boolean = true,
 ) {
   val view = LocalView.current
   LaunchedEffect(
-      enabled,
       settings.powerMode,
       settings.idleSleepMinutes,
       settings.sleepStartMinutes,
       settings.sleepEndMinutes,
       lastUserInteractionMs,
   ) {
-    val window = (view.context as? Activity)?.window ?: return@LaunchedEffect
-    if (!enabled) {
+    val activity = view.context as? Activity ?: return@LaunchedEffect
+    val window = activity.window
+    var wasKeepingOn = PowerPolicy.shouldKeepScreenOn(settings, lastUserInteractionMs)
+    if (wasKeepingOn) {
+      window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    } else {
       window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-      return@LaunchedEffect
     }
+
     while (true) {
+      delay(15_000)
       val keepOn = PowerPolicy.shouldKeepScreenOn(settings, lastUserInteractionMs)
       if (keepOn) {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
       } else {
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (wasKeepingOn) {
+          activity.moveTaskToBack(true)
+        }
       }
-      delay(15_000)
+      wasKeepingOn = keepOn
     }
   }
 }

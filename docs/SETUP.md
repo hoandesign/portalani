@@ -214,9 +214,13 @@ If it does not:
 | Source | Personal (your lists) vs Full library (catalog) |
 | Shuffle | Randomize slide order |
 | Seconds per slide | Auto-advance interval (5–120 s) |
-| List status | Which AniList list to show (Personal mode) |
+| List status | Which AniList list to show (Personal mode); each status has a distinct icon |
 | Format / Sort / Season | Catalog filters (Full library mode) |
-| Power | Always on (default), sleep after idle, or off during quiet hours (default 10 PM–7 AM) |
+| Power | Always on (default), sleep after idle, or off during quiet hours (default 10 PM–7 AM; 30 min grace if opened during quiet hours) |
+
+### Slide info panel
+
+When signed in and an anime is on your list, a colored status badge appears above the title (e.g. play icon for **Currently watching**). The row below the title shows community score plus format, year, episodes, studio, and airing status. Genre tags appear under the synopsis.
 
 ---
 

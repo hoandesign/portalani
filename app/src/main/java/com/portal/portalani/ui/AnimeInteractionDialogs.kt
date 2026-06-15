@@ -57,6 +57,8 @@ fun PortalPickerDialog(
     selectedKey: String,
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
+    iconForKey: ((String) -> ImageVector)? = null,
+    tintForKey: ((String) -> Color)? = null,
 ) {
   Dialog(
       onDismissRequest = onDismiss,
@@ -86,6 +88,8 @@ fun PortalPickerDialog(
                 onSelect(key)
                 onDismiss()
               },
+              leadingIcon = iconForKey?.invoke(key),
+              iconTint = tintForKey?.invoke(key),
           )
         }
       }
@@ -233,12 +237,21 @@ private fun PortalPickerOptionRow(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     compact: Boolean = false,
+    leadingIcon: ImageVector? = null,
+    iconTint: Color? = null,
 ) {
   val colors =
       when {
         !enabled -> PortalAniColors.TextMuted.copy(alpha = 0.45f) to Color(0x08FFFFFF)
         selected -> PortalAniColors.Accent to PortalAniColors.AccentSoft
         else -> PortalAniColors.TextPrimary to Color(0x10FFFFFF)
+      }
+  val resolvedIconTint =
+      when {
+        !enabled -> colors.first
+        iconTint != null -> if (selected) iconTint else iconTint.copy(alpha = 0.82f)
+        selected -> colors.first
+        else -> PortalAniColors.TextSecondary
       }
   Surface(
       onClick = onClick,
@@ -251,18 +264,32 @@ private fun PortalPickerOptionRow(
               1.dp,
               when {
                 !enabled -> PortalAniColors.Border.copy(alpha = 0.35f)
-                selected -> PortalAniColors.Accent
+                selected -> iconTint ?: PortalAniColors.Accent
                 else -> PortalAniColors.Border
               },
           ),
   ) {
-    Text(
-        text = label,
+    Row(
         modifier = Modifier.padding(horizontal = 18.dp, vertical = if (compact) 12.dp else 14.dp),
-        color = colors.first,
-        fontSize = if (compact) 16.sp else 17.sp,
-        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      if (leadingIcon != null) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            tint = resolvedIconTint,
+            modifier = Modifier.size(if (compact) 18.dp else 20.dp),
+        )
+      }
+      Text(
+          text = label,
+          color = colors.first,
+          fontSize = if (compact) 16.sp else 17.sp,
+          fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+          modifier = Modifier.weight(1f, fill = false),
+      )
+    }
   }
 }
 
@@ -519,6 +546,8 @@ fun ListStatusDialog(
               label = listStatusLabel(status),
               selected = selected,
               onClick = { onSelect(status) },
+              leadingIcon = status.icon(),
+              iconTint = status.accentColor(),
           )
         }
       }

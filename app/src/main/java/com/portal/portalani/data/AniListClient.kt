@@ -224,6 +224,7 @@ class AniListClient(private val http: OkHttpClient) {
     val listStatus = entry?.optString("status").toListStatusOrNull()
     val userScore = entry?.let { parseUserScore(it.optDouble("score", 0.0)) }
     val isFavourite = media.optBoolean("isFavourite", false)
+    val studio = parseMainStudio(media)
 
     return AnimeSlide(
         id = id,
@@ -236,6 +237,7 @@ class AniListClient(private val http: OkHttpClient) {
         status = media.optString("status").takeIf { it.isNotBlank() && it != "null" },
         seasonYear = media.optInt("seasonYear").takeIf { it > 0 },
         format = media.optString("format").takeIf { it.isNotBlank() && it != "null" },
+        studio = studio,
         genres = genres,
         description = cleanDescription(media.optString("description")),
         ratedRankAllTime = ratedRank,
@@ -248,6 +250,15 @@ class AniListClient(private val http: OkHttpClient) {
         userScore = userScore,
         isFavourite = isFavourite,
     )
+  }
+
+  private fun parseMainStudio(media: JSONObject): String? {
+    val nodes = media.optJSONObject("studios")?.optJSONArray("nodes") ?: return null
+    for (i in 0 until nodes.length()) {
+      val name = nodes.optJSONObject(i)?.optString("name").orEmpty()
+      if (name.isNotBlank() && name != "null") return name
+    }
+    return null
   }
 
   private fun parseAllTimeRankings(media: JSONObject): Pair<Int?, Int?> {
@@ -340,6 +351,11 @@ class AniListClient(private val http: OkHttpClient) {
         seasonYear
         format
         genres
+        studios(isMain: true) {
+          nodes {
+            name
+          }
+        }
         description(asHtml: false)
         siteUrl
         trailer { id site }

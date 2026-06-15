@@ -58,7 +58,6 @@ class MainActivity : ComponentActivity() {
         PowerScreenEffect(
             settings = settings,
             lastUserInteractionMs = lastUserInteractionMs,
-            enabled = slideshowAllowed,
         )
 
         PortalAniApp(

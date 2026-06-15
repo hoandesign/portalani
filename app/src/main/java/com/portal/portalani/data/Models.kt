@@ -22,6 +22,7 @@ data class AnimeSlide(
     val status: String?,
     val seasonYear: Int?,
     val format: String?,
+    val studio: String?,
     val genres: List<String>,
     val description: String?,
     val ratedRankAllTime: Int?,

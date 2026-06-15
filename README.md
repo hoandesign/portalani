@@ -5,12 +5,13 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Current version:** 0.7.0
+**Current version:** 0.7.3
 
 ## Features
 
 - Cinematic slideshow with banner parallax, poster, synopsis, and genre tags
-- **Personal** mode — your AniList lists (watching, planning, completed, etc.)
+- Slide info panel: list-status badge (with icon), title, score + studio/meta row, ranks, synopsis, genres
+- **Personal** mode — your AniList lists (watching, planning, completed, etc.) with status icons
 - **Full library** mode — browse the public catalog with season, format, and sort filters
 - AniList OAuth sign-in (rate, favourite, add to list)
 - All-time rank badges, community score, YouTube trailers
@@ -33,6 +34,17 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 | Next slide | Swipe left or tap right edge |
 | Previous slide | Swipe right or tap left edge |
 | Rate / Favourite / List | Icon cluster (bottom-right of info panel) |
+
+### List status icons
+
+| Status | Icon |
+|--------|------|
+| Currently watching | Play |
+| Planning | Plus |
+| Completed | Check |
+| Paused | Info |
+| Dropped | Close |
+| Rewatching | Refresh |
 
 When the Portal sleeps, the slideshow should start automatically if screensaver registration succeeded during deploy.
 

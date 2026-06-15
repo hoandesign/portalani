@@ -66,6 +66,7 @@ private fun AnimeSlide.toJson(): JSONObject =
         .put("status", status)
         .put("seasonYear", seasonYear ?: JSONObject.NULL)
         .put("format", format)
+        .put("studio", studio)
         .put("genres", JSONArray(genres))
         .put("description", description)
         .put("ratedRankAllTime", ratedRankAllTime ?: JSONObject.NULL)
@@ -97,6 +98,7 @@ private fun JSONObject.toAnimeSlide(): AnimeSlide? {
       status = optString("status").takeIf { it.isNotBlank() && it != "null" },
       seasonYear = optInt("seasonYear").takeIf { it > 0 },
       format = optString("format").takeIf { it.isNotBlank() && it != "null" },
+      studio = optString("studio").takeIf { it.isNotBlank() && it != "null" },
       genres = genres,
       description = optString("description").takeIf { it.isNotBlank() && it != "null" },
       ratedRankAllTime = optInt("ratedRankAllTime").takeIf { it > 0 },

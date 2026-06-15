@@ -27,13 +27,31 @@ object PowerPolicy {
   const val DEFAULT_IDLE_SLEEP_MINUTES = 60
   const val DEFAULT_SLEEP_START_MINUTES = 22 * 60
   const val DEFAULT_SLEEP_END_MINUTES = 7 * 60
+  /** If the user opens the app during quiet hours, keep the screen on this long after the last touch. */
+  const val SCHEDULED_OPEN_GRACE_MINUTES = 30
 
   fun shouldKeepScreenOn(settings: AppSettings, lastUserInteractionMs: Long, nowMs: Long = System.currentTimeMillis()): Boolean =
       when (settings.powerMode) {
         PowerMode.ALWAYS_ON -> true
         PowerMode.IDLE_SLEEP -> nowMs - lastUserInteractionMs < settings.idleSleepMinutes * 60_000L
-        PowerMode.SCHEDULED_SLEEP -> !isWithinSleepWindow(settings.sleepStartMinutes, settings.sleepEndMinutes, nowMs)
+        PowerMode.SCHEDULED_SLEEP ->
+            scheduledScreenAllowed(settings, lastUserInteractionMs, nowMs)
       }
+
+  /**
+   * During quiet hours the screensaver stays off, but a manual app open gets a short grace period
+   * so the user can browse before the Portal is allowed to sleep again.
+   */
+  fun scheduledScreenAllowed(
+      settings: AppSettings,
+      lastUserInteractionMs: Long,
+      nowMs: Long = System.currentTimeMillis(),
+  ): Boolean {
+    if (!isWithinSleepWindow(settings.sleepStartMinutes, settings.sleepEndMinutes, nowMs)) {
+      return true
+    }
+    return nowMs - lastUserInteractionMs < SCHEDULED_OPEN_GRACE_MINUTES * 60_000L
+  }
 
   /** Whether the dream/screensaver should launch the slideshow. */
   fun shouldRunSlideshow(settings: AppSettings, nowMs: Long = System.currentTimeMillis()): Boolean =

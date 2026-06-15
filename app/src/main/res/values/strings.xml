@@ -19,6 +19,7 @@
     <string name="power_sleep_from">Sleep from</string>
     <string name="power_wake_at">Wake at</string>
     <string name="power_pick_time">Pick a time</string>
+    <string name="power_scheduled_hint">During quiet hours the Portal normally stays asleep and the slideshow won\u2019t start on its own. If you open Portal Ani in that window, the screen stays on for 30 minutes after your last touch, then sleeps again while still in quiet hours. Outside quiet hours, the screen stays on.</string>
     <string name="list_status">List status</string>
     <string name="status_current">Currently watching</string>
     <string name="status_planning">Planning</string>
