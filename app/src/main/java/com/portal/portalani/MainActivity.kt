@@ -16,6 +16,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.portal.portalani.BuildConfig
 import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.ui.PortalAniApp
 import com.portal.portalani.ui.PortalAniTheme
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
             onSetSleepEndMinutes = vm::setSleepEndMinutes,
             onSlideIndexChanged = vm::onSlideIndexChanged,
             onUserInteraction = { lastUserInteractionMs = System.currentTimeMillis() },
+            appVersion = BuildConfig.VERSION_NAME,
         )
       }
     }

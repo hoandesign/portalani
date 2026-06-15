@@ -148,7 +148,7 @@ From the project root:
 bash scripts/deploy.sh --build
 ```
 
-Or if already built:
+Or if already built (rebuilds automatically when `app/src` or `app/build.gradle.kts` changed):
 
 ```bash
 bash scripts/deploy.sh -s YOUR_SERIAL

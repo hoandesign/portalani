@@ -93,6 +93,7 @@ fun PortalAniApp(
     onSetSleepEndMinutes: (Int) -> Unit = {},
     onSlideIndexChanged: (Int) -> Unit = {},
     onUserInteraction: () -> Unit = {},
+    appVersion: String = "",
 ) {
   var showSettings by remember { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
@@ -166,6 +167,7 @@ fun PortalAniApp(
           onSetSleepStartMinutes = onSetSleepStartMinutes,
           onSetSleepEndMinutes = onSetSleepEndMinutes,
           onUserInteraction = onUserInteraction,
+          appVersion = appVersion,
       )
     }
 
@@ -531,6 +533,7 @@ private fun SettingsPanel(
     onSetSleepStartMinutes: (Int) -> Unit,
     onSetSleepEndMinutes: (Int) -> Unit,
     onUserInteraction: () -> Unit,
+    appVersion: String,
 ) {
   var statusMenuOpen by remember { mutableStateOf(false) }
   var formatMenuOpen by remember { mutableStateOf(false) }
@@ -811,6 +814,14 @@ private fun SettingsPanel(
       }
 
       Spacer(Modifier.height(12.dp))
+      if (appVersion.isNotBlank()) {
+        Text(
+            text = stringResource(R.string.app_version, appVersion),
+            color = PortalAniColors.TextMuted.copy(alpha = 0.75f),
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+      }
       }
     }
   }

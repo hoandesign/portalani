@@ -53,6 +53,12 @@ echo ">> device: $SERIAL"
 if [[ $DO_BUILD -eq 1 ]]; then
   echo ">> ./gradlew assembleDebug"
   ./gradlew assembleDebug
+elif [[ ! -f "$APK" ]]; then
+  echo ">> APK missing — ./gradlew assembleDebug"
+  ./gradlew assembleDebug
+elif [[ "app/build.gradle.kts" -nt "$APK" ]] || find app/src -type f -newer "$APK" -print -quit | grep -q .; then
+  echo ">> APK older than sources — ./gradlew assembleDebug"
+  ./gradlew assembleDebug
 fi
 [[ -f "$APK" ]] || { echo "APK not found: $APK (run with --build)" >&2; exit 1; }
 
