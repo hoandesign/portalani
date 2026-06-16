@@ -54,12 +54,14 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.portal.portalani.R
 import com.portal.portalani.data.AnimeSlide
+import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.ListStatus
 
 @Composable
 fun AnimeFrameSlide(
     slide: AnimeSlide,
     modifier: Modifier = Modifier,
+    frameMode: FrameMode = FrameMode.INFORMATIVE,
     isSignedIn: Boolean = false,
     onPlayTrailer: (() -> Unit)? = null,
     onOpenAniList: (() -> Unit)? = null,
@@ -105,104 +107,278 @@ fun AnimeFrameSlide(
   val bgAlpha = 0.62f * enter
 
   Box(modifier = modifier.fillMaxSize()) {
-    AsyncImage(
-        model =
-            ImageRequest.Builder(context)
-                .data(slide.bannerUrl)
-                .crossfade(true)
-                .build(),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier =
-            Modifier.fillMaxSize()
-                .graphicsLayer {
-                  scaleX = bgScale
-                  scaleY = bgScale
-                  alpha = bgAlpha
-                  translationX = bgDriftX
-                  translationY = bgDriftY
-                },
+    SlideParallaxBackground(
+        slide = slide,
+        context = context,
+        enter = enter,
+        bgScale = bgScale,
+        bgAlpha = bgAlpha,
+        bgDriftX = bgDriftX,
+        bgDriftY = bgDriftY,
+        posterOnly = frameMode == FrameMode.POSTER_ONLY,
     )
 
-    Box(
-        modifier =
-            Modifier.fillMaxSize()
-                .graphicsLayer { alpha = enter }
-                .background(Color(0x88000000)),
-    )
+    when (frameMode) {
+      FrameMode.INFORMATIVE ->
+          InformativeFrameContent(
+              slide = slide,
+              context = context,
+              enter = enter,
+              infoEnter = infoEnter,
+              posterDriftX = posterDriftX,
+              posterDriftY = posterDriftY,
+              onPlayTrailer = onPlayTrailer,
+              onOpenAniList = onOpenAniList,
+              onTapScore = onTapScore,
+              onToggleFavourite = onToggleFavourite,
+              onEditList = onEditList,
+          )
+      FrameMode.POSTER_ONLY ->
+          PosterOnlyFrameContent(
+              slide = slide,
+              context = context,
+              enter = enter,
+              posterDriftX = posterDriftX,
+              posterDriftY = posterDriftY,
+          )
+    }
+  }
+}
 
-    Box(
-        modifier =
-            Modifier.fillMaxSize()
-                .graphicsLayer { alpha = enter }
-                .background(
+@Composable
+private fun SlideParallaxBackground(
+    slide: AnimeSlide,
+    context: android.content.Context,
+    enter: Float,
+    bgScale: Float,
+    bgAlpha: Float,
+    bgDriftX: Float,
+    bgDriftY: Float,
+    posterOnly: Boolean,
+) {
+  AsyncImage(
+      model =
+          ImageRequest.Builder(context)
+              .data(slide.bannerUrl)
+              .crossfade(true)
+              .build(),
+      contentDescription = null,
+      contentScale = ContentScale.Crop,
+      modifier =
+          Modifier.fillMaxSize()
+              .graphicsLayer {
+                scaleX = bgScale
+                scaleY = bgScale
+                alpha = bgAlpha
+                translationX = bgDriftX
+                translationY = bgDriftY
+              },
+  )
+
+  Box(
+      modifier =
+          Modifier.fillMaxSize()
+              .graphicsLayer { alpha = enter }
+              .background(Color(0x88000000)),
+  )
+
+  Box(
+      modifier =
+          Modifier.fillMaxSize()
+              .graphicsLayer { alpha = enter }
+              .background(
+                  if (posterOnly) {
+                    Brush.verticalGradient(
+                        0f to Color(0xD805070C),
+                        0.45f to Color(0x8C05070C),
+                        1f to Color(0xD805070C),
+                    )
+                  } else {
                     Brush.horizontalGradient(
                         0f to Color(0xE605070C),
                         0.22f to Color(0x9905070C),
                         0.55f to Color(0x7305070C),
                         1f to Color(0xCC05070C),
-                    ),
-                ),
-    )
+                    )
+                  },
+              ),
+  )
+}
 
-    Row(
+@Composable
+private fun InformativeFrameContent(
+    slide: AnimeSlide,
+    context: android.content.Context,
+    enter: Float,
+    infoEnter: Float,
+    posterDriftX: Float,
+    posterDriftY: Float,
+    onPlayTrailer: (() -> Unit)?,
+    onOpenAniList: (() -> Unit)?,
+    onTapScore: (() -> Unit)?,
+    onToggleFavourite: (() -> Unit)?,
+    onEditList: (() -> Unit)?,
+) {
+  Row(
+      modifier =
+          Modifier.fillMaxSize()
+              .padding(top = 56.dp, bottom = 32.dp, start = 40.dp, end = 44.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(36.dp),
+  ) {
+    val posterShape = PortalAniShapes.Poster
+    Box(
         modifier =
-            Modifier.fillMaxSize()
-                .padding(top = 56.dp, bottom = 32.dp, start = 40.dp, end = 44.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(36.dp),
+            Modifier.fillMaxHeight(0.94f)
+                .aspectRatio(2f / 3f)
+                .graphicsLayer {
+                  val posterScale = 0.9f + (0.1f * enter)
+                  scaleX = posterScale
+                  scaleY = posterScale
+                  alpha = enter
+                  translationX = posterDriftX + (1f - enter) * -42f
+                  translationY = posterDriftY + (1f - enter) * 18f
+                }
+                .shadow(
+                    elevation = 24.dp,
+                    shape = posterShape,
+                    clip = true,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black,
+                )
+                .clip(posterShape)
+                .border(1.5.dp, Color.White.copy(alpha = 0.16f * enter), posterShape),
     ) {
-      val posterShape = PortalAniShapes.Poster
+      AsyncImage(
+          model =
+              ImageRequest.Builder(context)
+                  .data(slide.coverUrl)
+                  .crossfade(true)
+                  .build(),
+          contentDescription = slide.title,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize().clip(posterShape),
+      )
+    }
+
+    AnimeInfoPanel(
+        slide = slide,
+        modifier =
+            Modifier.weight(1f)
+                .fillMaxHeight()
+                .graphicsLayer {
+                  alpha = infoEnter
+                  translationX = (1f - infoEnter) * 56f
+                  translationY = (1f - infoEnter) * 22f
+                },
+        onPlayTrailer = onPlayTrailer,
+        onOpenAniList = onOpenAniList,
+        onTapScore = onTapScore,
+        onToggleFavourite = onToggleFavourite,
+        onEditList = onEditList,
+    )
+  }
+}
+
+@Composable
+private fun PosterOnlyFrameContent(
+    slide: AnimeSlide,
+    context: android.content.Context,
+    enter: Float,
+    posterDriftX: Float,
+    posterDriftY: Float,
+) {
+  val posterShape = PortalAniShapes.Poster
+  val score = slide.averageScore?.let { it / 10.0 }
+
+  Box(
+      modifier = Modifier.fillMaxSize().padding(vertical = 40.dp, horizontal = 48.dp),
+      contentAlignment = Alignment.Center,
+  ) {
+    Box(
+        modifier =
+            Modifier.fillMaxHeight(0.9f)
+                .aspectRatio(2f / 3f)
+                .graphicsLayer {
+                  val posterScale = 0.92f + (0.08f * enter)
+                  scaleX = posterScale
+                  scaleY = posterScale
+                  alpha = enter
+                  translationX = posterDriftX
+                  translationY = posterDriftY + (1f - enter) * 24f
+                }
+                .shadow(
+                    elevation = 28.dp,
+                    shape = posterShape,
+                    clip = true,
+                    ambientColor = Color.Black,
+                    spotColor = Color.Black,
+                )
+                .clip(posterShape)
+                .border(1.5.dp, Color.White.copy(alpha = 0.18f * enter), posterShape),
+    ) {
+      AsyncImage(
+          model =
+              ImageRequest.Builder(context)
+                  .data(slide.coverUrl)
+                  .crossfade(true)
+                  .build(),
+          contentDescription = slide.title,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize(),
+      )
+
       Box(
           modifier =
-              Modifier.fillMaxHeight(0.94f)
-                  .aspectRatio(2f / 3f)
-                  .graphicsLayer {
-                    val posterScale = 0.9f + (0.1f * enter)
-                    scaleX = posterScale
-                    scaleY = posterScale
-                    alpha = enter
-                    translationX = posterDriftX + (1f - enter) * -42f
-                    translationY = posterDriftY + (1f - enter) * 18f
-                  }
-                  .shadow(
-                      elevation = 24.dp,
-                      shape = posterShape,
-                      clip = true,
-                      ambientColor = Color.Black,
-                      spotColor = Color.Black,
-                  )
-                  .clip(posterShape)
-                  .border(1.5.dp, Color.White.copy(alpha = 0.16f * enter), posterShape),
-      ) {
-        AsyncImage(
-            model =
-                ImageRequest.Builder(context)
-                    .data(slide.coverUrl)
-                    .crossfade(true)
-                    .build(),
-            contentDescription = slide.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize().clip(posterShape),
-        )
-      }
-
-      AnimeInfoPanel(
-          slide = slide,
-          modifier =
-              Modifier.weight(1f)
-                  .fillMaxHeight()
-                  .graphicsLayer {
-                    alpha = infoEnter
-                    translationX = (1f - infoEnter) * 56f
-                    translationY = (1f - infoEnter) * 22f
-                  },
-          onPlayTrailer = onPlayTrailer,
-          onOpenAniList = onOpenAniList,
-          onTapScore = onTapScore,
-          onToggleFavourite = onToggleFavourite,
-          onEditList = onEditList,
+              Modifier.align(Alignment.BottomCenter)
+                  .fillMaxWidth()
+                  .height(168.dp)
+                  .background(
+                      Brush.verticalGradient(
+                          0f to Color.Transparent,
+                          0.45f to Color(0x88000000),
+                          1f to Color(0xE6000000),
+                      ),
+                  ),
       )
+
+      Column(
+          modifier =
+              Modifier.align(Alignment.BottomCenter)
+                  .fillMaxWidth()
+                  .padding(horizontal = 22.dp, vertical = 20.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        Text(
+            text = slide.title,
+            color = PortalAniColors.TextPrimary,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 26.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.9f), blurRadius = 16f)),
+        )
+
+        if (!slide.nativeTitle.isNullOrBlank()) {
+          Spacer(Modifier.height(4.dp))
+          Text(
+              text = slide.nativeTitle,
+              color = PortalAniColors.TextMuted,
+              fontSize = 15.sp,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+              textAlign = TextAlign.Center,
+              style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.75f), blurRadius = 10f)),
+          )
+        }
+
+        if (score != null) {
+          Spacer(Modifier.height(10.dp))
+          CommunityScoreInline(score = score, compact = true)
+        }
+      }
     }
   }
 }
@@ -428,22 +604,23 @@ private fun ScoreMetaRow(score: Double?, meta: String) {
 }
 
 @Composable
-private fun CommunityScoreInline(score: Double) {
+private fun CommunityScoreInline(score: Double, compact: Boolean = false) {
   Row(
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(5.dp),
+      horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp),
   ) {
     Icon(
         imageVector = PortalIcons.ScoreStar,
         contentDescription = null,
         tint = PortalAniColors.Gold,
-        modifier = Modifier.size(16.dp),
+        modifier = Modifier.size(if (compact) 14.dp else 16.dp),
     )
     Text(
         text = stringResource(R.string.community_score, score),
         color = PortalAniColors.Gold,
-        fontSize = 16.sp,
+        fontSize = if (compact) 14.sp else 16.sp,
         fontWeight = FontWeight.Bold,
+        style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.8f), blurRadius = 8f)),
     )
   }
 }

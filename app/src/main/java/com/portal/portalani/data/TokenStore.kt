@@ -72,6 +72,9 @@ class SettingsStore(context: Context) {
         librarySort =
             LibrarySort.valueOf(prefs.getString(KEY_LIBRARY_SORT, LibrarySort.POPULARITY.name)!!),
         seasonKey = prefs.getString(KEY_SEASON_KEY, SeasonSelection.ANY_KEY)!!,
+        frameMode =
+            runCatching { FrameMode.valueOf(prefs.getString(KEY_FRAME_MODE, FrameMode.INFORMATIVE.name)!!) }
+                .getOrDefault(FrameMode.INFORMATIVE),
         powerMode =
             runCatching { PowerMode.valueOf(prefs.getString(KEY_POWER_MODE, PowerMode.ALWAYS_ON.name)!!) }
                 .getOrDefault(PowerMode.ALWAYS_ON),
@@ -90,6 +93,7 @@ class SettingsStore(context: Context) {
       putString(KEY_FORMAT_FILTER, settings.formatFilter.name)
       putString(KEY_LIBRARY_SORT, settings.librarySort.name)
       putString(KEY_SEASON_KEY, settings.seasonKey)
+      putString(KEY_FRAME_MODE, settings.frameMode.name)
       putString(KEY_POWER_MODE, settings.powerMode.name)
       putInt(KEY_IDLE_SLEEP_MINUTES, settings.idleSleepMinutes)
       putInt(KEY_SLEEP_START_MINUTES, settings.sleepStartMinutes)
@@ -107,6 +111,7 @@ class SettingsStore(context: Context) {
     private const val KEY_FORMAT_FILTER = "format_filter"
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_SEASON_KEY = "season_key"
+    private const val KEY_FRAME_MODE = "frame_mode"
     private const val KEY_POWER_MODE = "power_mode"
     private const val KEY_IDLE_SLEEP_MINUTES = "idle_sleep_minutes"
     private const val KEY_SLEEP_START_MINUTES = "sleep_start_minutes"

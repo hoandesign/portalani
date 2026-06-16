@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
             onSetAnimeListStatus = vm::setAnimeListStatus,
             onRemoveFromList = vm::removeFromList,
             onSetShuffle = vm::setShuffle,
+            onSetFrameMode = vm::setFrameMode,
             onSetIntervalSeconds = vm::setIntervalSeconds,
             onSetSourceMode = vm::setSourceMode,
             onSetListStatus = vm::setListStatus,

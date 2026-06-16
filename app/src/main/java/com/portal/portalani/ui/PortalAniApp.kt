@@ -54,6 +54,7 @@ import com.portal.portalani.UiState
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.FormatFilter
+import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.PowerMode
@@ -82,6 +83,7 @@ fun PortalAniApp(
     onSetAnimeListStatus: (Int, ListStatus) -> Unit,
     onRemoveFromList: (Int) -> Unit,
     onSetShuffle: (Boolean) -> Unit,
+    onSetFrameMode: (FrameMode) -> Unit,
     onSetIntervalSeconds: (Int) -> Unit,
     onSetSourceMode: (SourceMode) -> Unit,
     onSetListStatus: (ListStatus) -> Unit,
@@ -128,6 +130,7 @@ fun PortalAniApp(
                 orderResetToken = state.orderResetToken,
                 shuffle = settings.shuffle,
                 intervalMs = settings.intervalMs,
+                frameMode = settings.frameMode,
                 settingsOpen = showSettings,
                 isSignedIn = isSignedIn,
                 onToggleSettings = { showSettings = !showSettings },
@@ -157,6 +160,7 @@ fun PortalAniApp(
           onSignIn = onSignIn,
           onSignOut = onSignOut,
           onSetShuffle = onSetShuffle,
+          onSetFrameMode = onSetFrameMode,
           onSetIntervalSeconds = onSetIntervalSeconds,
           onSetSourceMode = onSetSourceMode,
           onSetListStatus = onSetListStatus,
@@ -272,6 +276,7 @@ private fun SlideshowScreen(
     orderResetToken: Int,
     shuffle: Boolean,
     intervalMs: Long,
+    frameMode: FrameMode,
     settingsOpen: Boolean,
     isSignedIn: Boolean,
     onToggleSettings: () -> Unit,
@@ -447,6 +452,7 @@ private fun SlideshowScreen(
       val slide = order.getOrNull(idx) ?: return@AnimatedSlideHost
       AnimeFrameSlide(
           slide = slide,
+          frameMode = frameMode,
           isSignedIn = isSignedIn,
           onPlayTrailer =
               slide.trailerYoutubeId?.let { id ->
@@ -550,6 +556,7 @@ private fun SettingsPanel(
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSetShuffle: (Boolean) -> Unit,
+    onSetFrameMode: (FrameMode) -> Unit,
     onSetIntervalSeconds: (Int) -> Unit,
     onSetSourceMode: (SourceMode) -> Unit,
     onSetListStatus: (ListStatus) -> Unit,
@@ -806,6 +813,22 @@ private fun SettingsPanel(
             lineHeight = 20.sp,
         )
       }
+
+      Spacer(Modifier.height(24.dp))
+      SettingsSectionTitle(stringResource(R.string.frame_mode))
+      Spacer(Modifier.height(10.dp))
+      PortalSegmentedControl(
+          options =
+              listOf(
+                  stringResource(R.string.frame_mode_informative),
+                  stringResource(R.string.frame_mode_poster),
+              ),
+          selectedIndex = if (settings.frameMode == FrameMode.INFORMATIVE) 0 else 1,
+          onSelect = { index ->
+            onUserInteraction()
+            onSetFrameMode(if (index == 0) FrameMode.INFORMATIVE else FrameMode.POSTER_ONLY)
+          },
+      )
 
       Spacer(Modifier.height(24.dp))
       SettingRow(stringResource(R.string.shuffle)) {

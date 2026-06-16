@@ -1,5 +1,10 @@
 package com.portal.portalani.data
 
+enum class FrameMode {
+  INFORMATIVE,
+  POSTER_ONLY,
+}
+
 enum class ListStatus(val apiValue: String) {
   CURRENT("CURRENT"),
   PLANNING("PLANNING"),
@@ -70,6 +75,7 @@ data class AppSettings(
     val formatFilter: FormatFilter = FormatFilter.ALL,
     val librarySort: LibrarySort = LibrarySort.POPULARITY,
     val seasonKey: String = SeasonSelection.ANY_KEY,
+    val frameMode: FrameMode = FrameMode.INFORMATIVE,
     val powerMode: PowerMode = PowerMode.ALWAYS_ON,
     val idleSleepMinutes: Int = PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES,
     val sleepStartMinutes: Int = PowerPolicy.DEFAULT_SLEEP_START_MINUTES,

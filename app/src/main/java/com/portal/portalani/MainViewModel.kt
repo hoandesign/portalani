@@ -11,6 +11,7 @@ import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
+import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.PowerMode
@@ -184,6 +185,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setShuffle(enabled: Boolean) {
     updateSettings(_settings.value.copy(shuffle = enabled))
+  }
+
+  fun setFrameMode(mode: FrameMode) {
+    updateSettings(_settings.value.copy(frameMode = mode))
   }
 
   fun setIntervalSeconds(seconds: Int) {
