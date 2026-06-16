@@ -574,7 +574,7 @@ private fun RankStatChip(
 private fun buildMetaLine(slide: AnimeSlide): String =
     listOfNotNull(
             slide.format?.replace('_', ' ')?.uppercase(),
-            slide.seasonYear?.toString(),
+            slide.seasonYear?.toString() ?: slide.startDateYear?.toString(),
             slide.episodes?.let { "$it eps" },
             slide.studio,
             slide.status?.replace('_', ' ')?.lowercase()?.replaceFirstChar { it.uppercase() },

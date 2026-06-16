@@ -35,7 +35,15 @@ enum class AnimeSeason(val apiValue: String, val label: String) {
 data class LibrarySeasonParams(
     val season: String? = null,
     val seasonYear: Int? = null,
-)
+) {
+  /** Year-only filters (no season) must use startDate — AniList ignores seasonYear without season. */
+  val usesStartDateRange: Boolean
+    get() = seasonYear != null && season == null
+
+  fun startDateGreater(): Int? = seasonYear?.takeIf { usesStartDateRange }?.let { year -> year * 10_000 + 101 }
+
+  fun startDateLesser(): Int? = seasonYear?.takeIf { usesStartDateRange }?.let { year -> year * 10_000 + 1231 }
+}
 
 data class LibraryFilters(
     val format: FormatFilter = FormatFilter.ALL,
@@ -43,6 +51,17 @@ data class LibraryFilters(
     val seasonKey: String = SeasonSelection.ANY_KEY,
 ) {
   fun resolvedSeason(): LibrarySeasonParams = SeasonSelection.resolve(seasonKey)
+
+  /** Client-side guard when API returns entries with missing or mismatched year metadata. */
+  fun matchesSlide(slide: AnimeSlide): Boolean {
+    val params = resolvedSeason()
+    val targetYear = params.seasonYear ?: return true
+    val slideYear = slide.airingYear() ?: return false
+    if (slideYear != targetYear) return false
+    val targetSeason = params.season ?: return true
+    val slideSeason = slide.season ?: return true
+    return slideSeason.equals(targetSeason, ignoreCase = true)
+  }
 }
 
 enum class SeasonPickerSeason {

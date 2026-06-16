@@ -20,7 +20,10 @@ data class AnimeSlide(
     val averageScore: Int?,
     val episodes: Int?,
     val status: String?,
+    val season: String?,
     val seasonYear: Int?,
+    /** Fallback when seasonYear is unset (movies, older entries). */
+    val startDateYear: Int?,
     val format: String?,
     val studio: String?,
     val genres: List<String>,
@@ -41,6 +44,9 @@ data class AnimeSlide(
 
   val isOnList: Boolean
     get() = listEntryId != null && listStatus != null
+
+  /** Best display/filter year: season year first, then start date year. */
+  fun airingYear(): Int? = seasonYear ?: startDateYear
 
   fun withUserState(
       listEntryId: Int? = this.listEntryId,

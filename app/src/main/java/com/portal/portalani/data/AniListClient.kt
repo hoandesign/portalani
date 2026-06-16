@@ -46,7 +46,12 @@ class AniListClient(private val http: OkHttpClient) {
             .put("sort", JSONArray().put(filters.sort.apiSort))
     filters.format.apiValue?.let { variables.put("format", JSONArray().put(it)) }
     season.season?.let { variables.put("season", it) }
-    season.seasonYear?.let { variables.put("seasonYear", it) }
+    if (season.season != null) {
+      season.seasonYear?.let { variables.put("seasonYear", it) }
+    } else {
+      season.startDateGreater()?.let { variables.put("startDate_greater", it) }
+      season.startDateLesser()?.let { variables.put("startDate_lesser", it) }
+    }
 
     val query = if (accessToken != null) LIBRARY_AUTH_QUERY else LIBRARY_QUERY
     val data = postGraphQl(query, variables, accessToken)
@@ -65,6 +70,7 @@ class AniListClient(private val http: OkHttpClient) {
           startPage = startPage,
           pageCount = pageCount,
           perPage = perPage,
+          slideFilter = { slide -> filters.matchesSlide(slide) },
       ) { page -> fetchLibrary(filters, page, perPage, accessToken) }
 
   @Throws(IOException::class)
@@ -111,22 +117,30 @@ class AniListClient(private val http: OkHttpClient) {
       startPage: Int,
       pageCount: Int,
       perPage: Int,
+      slideFilter: (AnimeSlide) -> Boolean = { true },
       fetchPage: (Int) -> List<AnimeSlide>,
   ): FetchBatchResult {
     val slides = mutableListOf<AnimeSlide>()
     var page = startPage
-    repeat(pageCount) {
-      val batch = fetchPage(page)
-      if (batch.isEmpty()) {
+    val maxPages = pageCount * 4
+    var pagesFetched = 0
+
+    while (pagesFetched < maxPages) {
+      val raw = fetchPage(page)
+      if (raw.isEmpty()) {
         return FetchBatchResult(slides, page, hasMore = false)
       }
-      slides += batch
-      if (batch.size < perPage) {
+      slides += raw.filter(slideFilter)
+      pagesFetched++
+      if (raw.size < perPage) {
         return FetchBatchResult(slides, page + 1, hasMore = false)
       }
       page++
+      if (pagesFetched >= pageCount && slides.size >= perPage) {
+        return FetchBatchResult(slides, page, hasMore = true)
+      }
     }
-    return FetchBatchResult(slides, page, hasMore = true)
+    return FetchBatchResult(slides, page, hasMore = slides.isNotEmpty())
   }
 
   @Throws(IOException::class)
@@ -235,7 +249,9 @@ class AniListClient(private val http: OkHttpClient) {
         averageScore = media.optInt("averageScore").takeIf { it > 0 },
         episodes = media.optInt("episodes").takeIf { it > 0 },
         status = media.optString("status").takeIf { it.isNotBlank() && it != "null" },
+        season = media.optString("season").takeIf { it.isNotBlank() && it != "null" },
         seasonYear = media.optInt("seasonYear").takeIf { it > 0 },
+        startDateYear = media.optJSONObject("startDate")?.optInt("year")?.takeIf { it > 0 },
         format = media.optString("format").takeIf { it.isNotBlank() && it != "null" },
         studio = studio,
         genres = genres,
@@ -348,7 +364,9 @@ class AniListClient(private val http: OkHttpClient) {
         averageScore
         episodes
         status
+        season
         seasonYear
+        startDate { year month day }
         format
         genres
         studios(isMain: true) {
@@ -395,6 +413,8 @@ class AniListClient(private val http: OkHttpClient) {
           ${'$'}format: [MediaFormat],
           ${'$'}season: MediaSeason,
           ${'$'}seasonYear: Int,
+          ${'$'}startDate_greater: FuzzyDateInt,
+          ${'$'}startDate_lesser: FuzzyDateInt,
           ${'$'}sort: [MediaSort]
         ) {
           Page(page: ${'$'}page, perPage: ${'$'}perPage) {
@@ -404,6 +424,8 @@ class AniListClient(private val http: OkHttpClient) {
               format_in: ${'$'}format
               season: ${'$'}season
               seasonYear: ${'$'}seasonYear
+              startDate_greater: ${'$'}startDate_greater
+              startDate_lesser: ${'$'}startDate_lesser
               sort: ${'$'}sort
             ) {
               $MEDIA_FIELDS
@@ -421,6 +443,8 @@ class AniListClient(private val http: OkHttpClient) {
           ${'$'}format: [MediaFormat],
           ${'$'}season: MediaSeason,
           ${'$'}seasonYear: Int,
+          ${'$'}startDate_greater: FuzzyDateInt,
+          ${'$'}startDate_lesser: FuzzyDateInt,
           ${'$'}sort: [MediaSort]
         ) {
           Page(page: ${'$'}page, perPage: ${'$'}perPage) {
@@ -430,6 +454,8 @@ class AniListClient(private val http: OkHttpClient) {
               format_in: ${'$'}format
               season: ${'$'}season
               seasonYear: ${'$'}seasonYear
+              startDate_greater: ${'$'}startDate_greater
+              startDate_lesser: ${'$'}startDate_lesser
               sort: ${'$'}sort
             ) {
               $MEDIA_FIELDS

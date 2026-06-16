@@ -334,6 +334,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
+  private fun filterSlidesForSettings(slides: List<AnimeSlide>, settings: AppSettings): List<AnimeSlide> {
+    if (settings.sourceMode != SourceMode.LIBRARY) return slides
+    val filters = settings.libraryFilters()
+    return slides.filter { filters.matchesSlide(it) }
+  }
+
   private fun updateSettings(next: AppSettings) {
     settingsStore.save(next)
     _settings.value = next
@@ -349,9 +355,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     resetFeedPagination(cacheKey)
 
     val cachedFresh =
-        withContext(Dispatchers.IO) { slideCache.load(cacheKey) }
+        withContext(Dispatchers.IO) { slideCache.load(cacheKey) }?.let { filterSlidesForSettings(it, settings) }
     val cachedStale =
-        cachedFresh ?: withContext(Dispatchers.IO) { slideCache.loadStale(cacheKey) }
+        cachedFresh
+            ?: withContext(Dispatchers.IO) { slideCache.loadStale(cacheKey) }
+                ?.let { filterSlidesForSettings(it, settings) }
 
     when {
       feedKeyChanged && cachedFresh == null -> _state.value = UiState.Loading
