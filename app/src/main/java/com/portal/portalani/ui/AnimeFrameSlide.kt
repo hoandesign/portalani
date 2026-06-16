@@ -269,11 +269,9 @@ private fun AnimeInfoPanel(
     }
 
     if (slide.ratedRankAllTime != null || slide.popularRankAllTime != null) {
-      val dualRanks = slide.ratedRankAllTime != null && slide.popularRankAllTime != null
       Spacer(Modifier.height(14.dp))
       Row(
-          modifier =
-              Modifier.widthIn(max = 760.dp).then(if (dualRanks) Modifier.fillMaxWidth() else Modifier),
+          modifier = Modifier.widthIn(max = 760.dp),
           horizontalArrangement = Arrangement.spacedBy(10.dp),
           verticalAlignment = Alignment.CenterVertically,
       ) {
@@ -283,8 +281,6 @@ private fun AnimeInfoPanel(
               icon = PortalIcons.RankRated,
               label = stringResource(R.string.rank_rated_label),
               accent = PortalAniColors.Gold,
-              fillWidth = dualRanks,
-              modifier = if (dualRanks) Modifier.weight(1f) else Modifier,
           )
         }
         slide.popularRankAllTime?.let { rank ->
@@ -293,8 +289,6 @@ private fun AnimeInfoPanel(
               icon = PortalIcons.RankPopular,
               label = stringResource(R.string.rank_popular_label),
               accent = PortalAniColors.Cyan,
-              fillWidth = dualRanks,
-              modifier = if (dualRanks) Modifier.weight(1f) else Modifier,
           )
         }
       }
@@ -523,26 +517,21 @@ private fun RankStatChip(
     label: String,
     accent: Color,
     modifier: Modifier = Modifier,
-    fillWidth: Boolean = true,
 ) {
   Surface(
-      modifier = modifier.then(if (fillWidth) Modifier.fillMaxWidth() else Modifier),
+      modifier = modifier,
       color = accent.copy(alpha = 0.12f),
       shape = PortalAniShapes.Chip,
       border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.38f)),
   ) {
     Row(
-        modifier =
-            Modifier.padding(
-                horizontal = if (fillWidth) 14.dp else 16.dp,
-                vertical = if (fillWidth) 10.dp else 12.dp,
-            ),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Box(
           modifier =
-              Modifier.size(if (fillWidth) 40.dp else 44.dp)
+              Modifier.size(44.dp)
                   .clip(CircleShape)
                   .background(accent.copy(alpha = 0.18f)),
           contentAlignment = Alignment.Center,
@@ -551,10 +540,10 @@ private fun RankStatChip(
             imageVector = icon,
             contentDescription = null,
             tint = accent,
-            modifier = Modifier.size(if (fillWidth) 20.dp else 22.dp),
+            modifier = Modifier.size(22.dp),
         )
       }
-      Column(modifier = if (fillWidth) Modifier.weight(1f) else Modifier) {
+      Column {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           Text(
               text = "#$rank",

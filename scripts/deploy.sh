@@ -40,7 +40,10 @@ if [[ -z "$ADB" ]]; then
 fi
 
 if [[ -z "$SERIAL" ]]; then
-  mapfile -t DEVICES < <("$ADB" devices | awk 'NR>1 && $2=="device"{print $1}')
+  DEVICES=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && DEVICES+=("$line")
+  done < <("$ADB" devices | awk 'NR>1 && $2=="device"{print $1}')
   case ${#DEVICES[@]} in
     0) echo "no authorized adb devices" >&2; exit 1;;
     1) SERIAL="${DEVICES[0]}";;

@@ -33,7 +33,7 @@
     <string name="open_settings">Open settings</string>
     <string name="signed_in_as">Signed in as %1$s</string>
     <string name="sign_out">Sign out</string>
-    <string name="screensaver_hint">Tap center for settings. Tap or swipe left/right to change slide.</string>
+    <string name="screensaver_hint">Long-press center for settings. Tap or swipe left/right to change slide.</string>
     <string name="source_mode">Source</string>
     <string name="source_personal">Personal</string>
     <string name="source_library">Full library</string>

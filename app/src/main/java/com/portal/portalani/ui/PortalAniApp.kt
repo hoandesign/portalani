@@ -110,8 +110,8 @@ fun PortalAniApp(
   Box(modifier = Modifier.fillMaxSize()) {
     Surface(modifier = Modifier.fillMaxSize(), color = PortalAniColors.Background) {
       when (state) {
-        UiState.Loading -> CenterMessage(stringResource(R.string.loading))
-        UiState.SigningIn -> CenterMessage(stringResource(R.string.sign_in_hint))
+        UiState.Loading -> AnimeLoadingScreen()
+        UiState.SigningIn -> AnimeLoadingScreen(message = stringResource(R.string.sign_in_hint))
         is UiState.NeedsSetup ->
             SetupScreen(
                 message = state.message,
@@ -422,12 +422,19 @@ private fun SlideshowScreen(
                           )
                         }
                         .pointerInput(order.size) {
-                          detectTapGestures { offset ->
-                            onUserInteraction()
-                            if (offset.x < size.width * 0.2f) previous()
-                            else if (offset.x > size.width * 0.8f) next()
-                            else onToggleSettings()
-                          }
+                          detectTapGestures(
+                              onLongPress = { offset ->
+                                onUserInteraction()
+                                if (offset.x >= size.width * 0.2f && offset.x <= size.width * 0.8f) {
+                                  onToggleSettings()
+                                }
+                              },
+                              onTap = { offset ->
+                                onUserInteraction()
+                                if (offset.x < size.width * 0.2f) previous()
+                                else if (offset.x > size.width * 0.8f) next()
+                              },
+                          )
                         }
                   },
               ),
