@@ -55,12 +55,14 @@ import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.FrameMode
+import com.portal.portalani.data.GeoPlace
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.PowerMode
 import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.data.SeasonSelection
 import com.portal.portalani.data.SourceMode
+import com.portal.portalani.data.WeatherNow
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlin.random.Random
@@ -70,6 +72,9 @@ import kotlinx.coroutines.delay
 fun PortalAniApp(
     state: UiState,
     settings: AppSettings,
+    weather: WeatherNow? = null,
+    geoStatus: String? = null,
+    geoResults: List<GeoPlace> = emptyList(),
     viewerName: String?,
     isSignedIn: Boolean,
     userMessage: String?,
@@ -84,9 +89,16 @@ fun PortalAniApp(
     onRemoveFromList: (Int) -> Unit,
     onSetShuffle: (Boolean) -> Unit,
     onSetFrameMode: (FrameMode) -> Unit,
+    onSetShowPosterClock: (Boolean) -> Unit,
+    onSetShowWeather: (Boolean) -> Unit = {},
+    onSetWeatherFahrenheit: (Boolean) -> Unit = {},
+    onSearchLocation: (String) -> Unit = {},
+    onChooseLocation: (GeoPlace) -> Unit = {},
+    onDetectLocation: () -> Unit = {},
+    onClearGeoSearch: () -> Unit = {},
     onSetIntervalSeconds: (Int) -> Unit,
     onSetSourceMode: (SourceMode) -> Unit,
-    onSetListStatus: (ListStatus) -> Unit,
+    onSetListStatuses: (Set<ListStatus>) -> Unit,
     onSetFormatFilter: (FormatFilter) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
@@ -134,6 +146,9 @@ fun PortalAniApp(
                 shuffle = settings.shuffle,
                 intervalMs = settings.intervalMs,
                 frameMode = settings.frameMode,
+                showPosterClock = settings.showPosterClock,
+                showWeather = settings.showWeather && settings.showPosterClock,
+                weather = weather,
                 settingsOpen = showSettings,
                 isSignedIn = isSignedIn,
                 onToggleSettings = { showSettings = !showSettings },
@@ -160,15 +175,24 @@ fun PortalAniApp(
     if (showSettings) {
       SettingsPanel(
           settings = settings,
+          geoStatus = geoStatus,
+          geoResults = geoResults,
           viewerName = viewerName,
           onDismiss = { showSettings = false },
           onSignIn = onSignIn,
           onSignOut = onSignOut,
           onSetShuffle = onSetShuffle,
           onSetFrameMode = onSetFrameMode,
+          onSetShowPosterClock = onSetShowPosterClock,
+          onSetShowWeather = onSetShowWeather,
+          onSetWeatherFahrenheit = onSetWeatherFahrenheit,
+          onSearchLocation = onSearchLocation,
+          onChooseLocation = onChooseLocation,
+          onDetectLocation = onDetectLocation,
+          onClearGeoSearch = onClearGeoSearch,
           onSetIntervalSeconds = onSetIntervalSeconds,
           onSetSourceMode = onSetSourceMode,
-          onSetListStatus = onSetListStatus,
+          onSetListStatuses = onSetListStatuses,
           onSetFormatFilter = onSetFormatFilter,
           onSetLibrarySort = onSetLibrarySort,
           onSetSeasonKey = onSetSeasonKey,
@@ -283,6 +307,9 @@ private fun SlideshowScreen(
     shuffle: Boolean,
     intervalMs: Long,
     frameMode: FrameMode,
+    showPosterClock: Boolean,
+    showWeather: Boolean,
+    weather: WeatherNow?,
     settingsOpen: Boolean,
     isSignedIn: Boolean,
     onToggleSettings: () -> Unit,
@@ -539,6 +566,19 @@ private fun SlideshowScreen(
       )
     }
 
+    if (
+        frameMode == FrameMode.POSTER_ONLY &&
+            showPosterClock &&
+            trailerYoutubeId == null
+    ) {
+      AnimatedPosterClock(
+          visible = !posterExpanded,
+          showWeather = showWeather,
+          weather = weather,
+          modifier = Modifier.align(Alignment.BottomStart),
+      )
+    }
+
     SlideshowGuideOverlay(
         step = guideStep,
         frameMode = frameMode,
@@ -627,15 +667,24 @@ private fun SlideshowScreen(
 @Composable
 private fun SettingsPanel(
     settings: AppSettings,
+    geoStatus: String?,
+    geoResults: List<GeoPlace>,
     viewerName: String?,
     onDismiss: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onSetShuffle: (Boolean) -> Unit,
     onSetFrameMode: (FrameMode) -> Unit,
+    onSetShowPosterClock: (Boolean) -> Unit,
+    onSetShowWeather: (Boolean) -> Unit,
+    onSetWeatherFahrenheit: (Boolean) -> Unit,
+    onSearchLocation: (String) -> Unit,
+    onChooseLocation: (GeoPlace) -> Unit,
+    onDetectLocation: () -> Unit,
+    onClearGeoSearch: () -> Unit,
     onSetIntervalSeconds: (Int) -> Unit,
     onSetSourceMode: (SourceMode) -> Unit,
-    onSetListStatus: (ListStatus) -> Unit,
+    onSetListStatuses: (Set<ListStatus>) -> Unit,
     onSetFormatFilter: (FormatFilter) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
@@ -658,8 +707,15 @@ private fun SettingsPanel(
   var idleMenuOpen by remember { mutableStateOf(false) }
   var sleepStartMenuOpen by remember { mutableStateOf(false) }
   var sleepEndMenuOpen by remember { mutableStateOf(false) }
+  var tempUnitMenuOpen by remember { mutableStateOf(false) }
+  var locationDialogOpen by remember { mutableStateOf(false) }
+  var placeWhenLocationDialogOpened by remember { mutableStateOf<String?>(null) }
   val intervalSeconds = (settings.intervalMs / 1000L).toInt()
-  val listStatusOptions = ListStatus.entries.map { status -> status.name to listStatusLabel(status) }
+  val tempUnitOptions =
+      listOf(
+          "celsius" to stringResource(R.string.weather_celsius),
+          "fahrenheit" to stringResource(R.string.weather_fahrenheit),
+      )
   val formatOptions = FormatFilter.entries.map { format -> format.name to format.label }
   val sortOptions = LibrarySort.entries.map { sort -> sort.name to sort.label }
   val sourceOptions =
@@ -694,7 +750,22 @@ private fun SettingsPanel(
           powerMenuOpen ||
           idleMenuOpen ||
           sleepStartMenuOpen ||
-          sleepEndMenuOpen
+          sleepEndMenuOpen ||
+          tempUnitMenuOpen ||
+          locationDialogOpen
+
+  LaunchedEffect(locationDialogOpen) {
+    if (locationDialogOpen) {
+      placeWhenLocationDialogOpened = settings.weatherPlace
+    }
+  }
+
+  LaunchedEffect(settings.weatherPlace) {
+    if (locationDialogOpen && settings.weatherPlace != placeWhenLocationDialogOpened) {
+      locationDialogOpen = false
+      onClearGeoSearch()
+    }
+  }
 
   BackHandler(enabled = anyMenuOpen) {
     statusMenuOpen = false
@@ -708,6 +779,9 @@ private fun SettingsPanel(
     idleMenuOpen = false
     sleepStartMenuOpen = false
     sleepEndMenuOpen = false
+    tempUnitMenuOpen = false
+    locationDialogOpen = false
+    onClearGeoSearch()
   }
 
   BackHandler(enabled = !anyMenuOpen) { onDismiss() }
@@ -768,17 +842,6 @@ private fun SettingsPanel(
       Spacer(Modifier.height(10.dp))
       PortalSettingsGroup {
         PortalSettingsRow(
-            label = stringResource(R.string.source_mode),
-            value =
-                if (settings.sourceMode == SourceMode.PERSONAL) {
-                  stringResource(R.string.source_personal)
-                } else {
-                  stringResource(R.string.source_library)
-                },
-            onClick = { sourceMenuOpen = true },
-        )
-        PortalSettingsDivider()
-        PortalSettingsRow(
             label = stringResource(R.string.frame_mode),
             value =
                 if (settings.frameMode == FrameMode.INFORMATIVE) {
@@ -813,20 +876,94 @@ private fun SettingsPanel(
 
       Spacer(Modifier.height(22.dp))
       PortalSettingsSectionHeader(
+          title = stringResource(R.string.settings_section_clock_weather),
+          subtitle =
+              if (!settings.showPosterClock) {
+                stringResource(R.string.weather_requires_clock)
+              } else {
+                stringResource(R.string.weather_hint)
+              },
+      )
+      Spacer(Modifier.height(10.dp))
+      PortalSettingsGroup {
+        PortalSettingsToggleRow(
+            label = stringResource(R.string.show_poster_clock),
+            checked = settings.showPosterClock,
+            onCheckedChange = {
+              onUserInteraction()
+              onSetShowPosterClock(it)
+            },
+        )
+        PortalSettingsDivider()
+        PortalSettingsToggleRow(
+            label = stringResource(R.string.show_weather),
+            checked = settings.showWeather,
+            enabled = settings.showPosterClock,
+            onCheckedChange = { enabled ->
+              onUserInteraction()
+              onSetShowWeather(enabled)
+              if (enabled && settings.weatherPlace == null) {
+                locationDialogOpen = true
+              }
+            },
+        )
+        if (settings.showWeather) {
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.weather_temperature_unit),
+              value =
+                  if (settings.weatherFahrenheit) {
+                    stringResource(R.string.weather_fahrenheit)
+                  } else {
+                    stringResource(R.string.weather_celsius)
+                  },
+              onClick = {
+                onUserInteraction()
+                tempUnitMenuOpen = true
+              },
+          )
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.weather_location),
+              value = settings.weatherPlace ?: stringResource(R.string.weather_location_not_set),
+              onClick = {
+                onUserInteraction()
+                locationDialogOpen = true
+              },
+          )
+        }
+      }
+
+      Spacer(Modifier.height(22.dp))
+      PortalSettingsSectionHeader(
           title = stringResource(R.string.settings_section_content),
           subtitle =
               if (settings.sourceMode == SourceMode.LIBRARY) {
                 stringResource(R.string.library_filters)
               } else {
-                null
+                stringResource(R.string.personal_lists_hint)
               },
       )
       Spacer(Modifier.height(10.dp))
       PortalSettingsGroup {
+        PortalSettingsRow(
+            label = stringResource(R.string.source_mode),
+            value =
+                if (settings.sourceMode == SourceMode.PERSONAL) {
+                  stringResource(R.string.source_personal)
+                } else {
+                  stringResource(R.string.source_library)
+                },
+            onClick = {
+              onUserInteraction()
+              sourceMenuOpen = true
+            },
+        )
+        PortalSettingsDivider()
         if (settings.sourceMode == SourceMode.PERSONAL) {
           PortalSettingsRow(
               label = stringResource(R.string.list_status),
-              value = listStatusLabel(settings.listStatus),
+              value = listStatusesSettingLabel(settings.listStatuses),
               onClick = { statusMenuOpen = true },
           )
         } else {
@@ -970,7 +1107,10 @@ private fun SettingsPanel(
         options = sourceOptions,
         selectedKey = settings.sourceMode.name,
         onDismiss = { sourceMenuOpen = false },
-        onSelect = { key -> onSetSourceMode(SourceMode.valueOf(key)) },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetSourceMode(SourceMode.valueOf(key))
+        },
     )
   }
 
@@ -996,6 +1136,19 @@ private fun SettingsPanel(
         onSelect = { key ->
           onUserInteraction()
           onSetIntervalSeconds(key.toIntOrNull() ?: intervalSeconds)
+        },
+    )
+  }
+
+  if (tempUnitMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.weather_temperature_unit),
+        options = tempUnitOptions,
+        selectedKey = if (settings.weatherFahrenheit) "fahrenheit" else "celsius",
+        onDismiss = { tempUnitMenuOpen = false },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetWeatherFahrenheit(key == "fahrenheit")
         },
     )
   }
@@ -1027,14 +1180,13 @@ private fun SettingsPanel(
   }
 
   if (statusMenuOpen) {
-    PortalPickerDialog(
-        title = stringResource(R.string.list_status),
-        options = listStatusOptions,
-        selectedKey = settings.listStatus.name,
+    PersonalListStatusesDialog(
+        selected = settings.listStatuses,
         onDismiss = { statusMenuOpen = false },
-        onSelect = { key -> onSetListStatus(ListStatus.valueOf(key)) },
-        iconForKey = { key -> ListStatus.valueOf(key).icon() },
-        tintForKey = { key -> ListStatus.valueOf(key).accentColor() },
+        onApply = { statuses ->
+          onUserInteraction()
+          onSetListStatuses(statuses)
+        },
     )
   }
 
@@ -1082,6 +1234,32 @@ private fun SettingsPanel(
         selectedMinutes = settings.sleepEndMinutes,
         onDismiss = { sleepEndMenuOpen = false },
         onSelect = onSetSleepEndMinutes,
+    )
+  }
+
+  if (locationDialogOpen) {
+    WeatherLocationDialog(
+        currentPlace = settings.weatherPlace,
+        geoStatus = geoStatus,
+        geoResults = geoResults,
+        onDismiss = {
+          locationDialogOpen = false
+          onClearGeoSearch()
+        },
+        onDetectLocation = {
+          onUserInteraction()
+          onDetectLocation()
+        },
+        onSearchLocation = { query ->
+          onUserInteraction()
+          onSearchLocation(query)
+        },
+        onChooseLocation = { place ->
+          onUserInteraction()
+          onChooseLocation(place)
+          locationDialogOpen = false
+          onClearGeoSearch()
+        },
     )
   }
 }

@@ -67,6 +67,7 @@ internal fun AnimatedSlideHost(
   AnimatedContent(
       targetState = slideIndex,
       modifier = modifier,
+      contentKey = { it },
       transitionSpec = { animeSlideTransition(slideCount) },
       label = "anime-slide",
   ) { idx ->

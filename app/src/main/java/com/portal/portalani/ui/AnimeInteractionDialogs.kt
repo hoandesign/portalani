@@ -625,6 +625,84 @@ private fun PortalStarRatingStar(
 }
 
 @Composable
+fun PersonalListStatusesDialog(
+    selected: Set<ListStatus>,
+    onDismiss: () -> Unit,
+    onApply: (Set<ListStatus>) -> Unit,
+) {
+  var draft by remember(selected) { mutableStateOf(selected) }
+
+  PortalFormDialog(
+      title = stringResource(R.string.list_status),
+      subtitle = stringResource(R.string.personal_lists_hint),
+      onDismiss = onDismiss,
+      width = PortalDialogWidths.Picker,
+      maxHeight = null,
+  ) {
+    Text(
+        stringResource(R.string.list_statuses_picker_hint),
+        color = PortalAniColors.TextMuted,
+        fontSize = 14.sp,
+        lineHeight = 19.sp,
+    )
+    Spacer(Modifier.height(14.dp))
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      ListStatus.entries.forEach { status ->
+        val isSelected = status in draft
+        PortalPickerOptionRow(
+            label = listStatusLabel(status),
+            selected = isSelected,
+            onClick = {
+              draft =
+                  if (isSelected) {
+                    if (draft.size == 1) draft else draft - status
+                  } else {
+                    draft + status
+                  }
+            },
+            leadingIcon = status.icon(),
+            iconTint = status.accentColor(),
+        )
+      }
+    }
+    Spacer(Modifier.height(16.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+    ) {
+      PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
+      Spacer(Modifier.width(10.dp))
+      PortalPrimaryButton(
+          text = stringResource(R.string.apply),
+          onClick = {
+            if (draft.isNotEmpty()) {
+              onApply(draft)
+            }
+            onDismiss()
+          },
+      )
+    }
+  }
+}
+
+@Composable
+fun listStatusesSettingLabel(statuses: Set<ListStatus>): String {
+  if (statuses.size >= ListStatus.entries.size) {
+    return stringResource(R.string.list_statuses_all)
+  }
+  val ordered = ListStatus.entries.filter { it in statuses }
+  return when (ordered.size) {
+    0 -> stringResource(R.string.list_statuses_count, 0)
+    1 -> listStatusLabel(ordered.first())
+    2 -> "${listStatusLabel(ordered[0])}, ${listStatusLabel(ordered[1])}"
+    else -> stringResource(R.string.list_statuses_count, ordered.size)
+  }
+}
+
+@Composable
 fun ListStatusDialog(
     animeTitle: String,
     currentStatus: ListStatus?,

@@ -3,6 +3,9 @@ package com.portal.portalani
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -49,8 +52,16 @@ class MainActivity : ComponentActivity() {
         val isSignedIn by vm.isSignedIn.collectAsStateWithLifecycle()
         val userMessage by vm.userMessage.collectAsStateWithLifecycle()
         val onboardingComplete by vm.onboardingComplete.collectAsStateWithLifecycle()
+        val weather by vm.weather.collectAsStateWithLifecycle()
+        val geoStatus by vm.geoStatus.collectAsStateWithLifecycle()
+        val geoResults by vm.geoResults.collectAsStateWithLifecycle()
         var lastUserInteractionMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
         val slideshowAllowed = PowerPolicy.shouldRunSlideshow(settings)
+
+        val locationLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+              if (grants.values.any { it }) vm.detectLocation()
+            }
 
         LaunchedEffect(launchedFromDream, settings.powerMode, settings.sleepStartMinutes, settings.sleepEndMinutes) {
           if (launchedFromDream && !slideshowAllowed) {
@@ -66,6 +77,9 @@ class MainActivity : ComponentActivity() {
         PortalAniApp(
             state = state,
             settings = settings,
+            weather = weather,
+            geoStatus = geoStatus,
+            geoResults = geoResults,
             viewerName = viewerName,
             isSignedIn = isSignedIn,
             userMessage = userMessage,
@@ -80,9 +94,27 @@ class MainActivity : ComponentActivity() {
             onRemoveFromList = vm::removeFromList,
             onSetShuffle = vm::setShuffle,
             onSetFrameMode = vm::setFrameMode,
+            onSetShowPosterClock = vm::setShowPosterClock,
+            onSetShowWeather = vm::setShowWeather,
+            onSetWeatherFahrenheit = vm::setWeatherFahrenheit,
+            onSearchLocation = vm::searchLocation,
+            onChooseLocation = vm::chooseLocation,
+            onDetectLocation = {
+              if (vm.hasLocationPermission()) {
+                vm.detectLocation()
+              } else {
+                locationLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                    ),
+                )
+              }
+            },
+            onClearGeoSearch = vm::clearGeoSearch,
             onSetIntervalSeconds = vm::setIntervalSeconds,
             onSetSourceMode = vm::setSourceMode,
-            onSetListStatus = vm::setListStatus,
+            onSetListStatuses = vm::setListStatuses,
             onSetFormatFilter = vm::setFormatFilter,
             onSetLibrarySort = vm::setLibrarySort,
             onSetSeasonKey = vm::setSeasonKey,

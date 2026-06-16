@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,6 +59,9 @@ object FrameViewerInsets {
   /** Slideshow is immersive (system bars hidden) — no extra top safe-zone inset. */
   val horizontal = 32.dp
   val vertical = 12.dp
+  /** Screen-fixed clock sits outside the poster frame — give it a bit more breathing room. */
+  val clockStart = 36.dp
+  val clockBottom = 32.dp
 }
 
 object PortalDialogWidths {
@@ -340,6 +346,7 @@ fun PortalSettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
   Row(
       modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
@@ -348,19 +355,24 @@ fun PortalSettingsToggleRow(
   ) {
     Text(
         text = label,
-        color = PortalAniColors.TextPrimary,
+        color = if (enabled) PortalAniColors.TextPrimary else PortalAniColors.TextMuted,
         fontSize = 18.sp,
         modifier = Modifier.weight(1f).padding(end = 16.dp),
     )
     androidx.compose.material3.Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
+        enabled = enabled,
         colors =
             androidx.compose.material3.SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = PortalAniColors.Accent,
                 uncheckedThumbColor = PortalAniColors.TextSecondary,
                 uncheckedTrackColor = PortalAniColors.Surface,
+                disabledCheckedThumbColor = PortalAniColors.TextSecondary,
+                disabledCheckedTrackColor = PortalAniColors.Surface,
+                disabledUncheckedThumbColor = PortalAniColors.TextMuted,
+                disabledUncheckedTrackColor = PortalAniColors.Surface,
             ),
     )
   }
@@ -396,5 +408,70 @@ fun PortalFilterField(
           modifier = Modifier.size(24.dp),
       )
     }
+  }
+}
+
+@Composable
+fun PortalSettingsTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+) {
+  Surface(
+      modifier = modifier.fillMaxWidth(),
+      shape = PortalAniShapes.Field,
+      color = PortalAniColors.Surface,
+      border = BorderStroke(1.dp, PortalAniColors.Border),
+  ) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = singleLine,
+        textStyle =
+            TextStyle(
+                color = PortalAniColors.TextPrimary,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        cursorBrush = SolidColor(PortalAniColors.Accent),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+        decorationBox = { innerTextField ->
+          Box(contentAlignment = Alignment.CenterStart) {
+            if (value.isEmpty()) {
+              Text(
+                  text = placeholder,
+                  color = PortalAniColors.TextMuted,
+                  fontSize = 17.sp,
+              )
+            }
+            innerTextField()
+          }
+        },
+    )
+  }
+}
+
+@Composable
+fun PortalSettingsPickRow(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Surface(
+      onClick = onClick,
+      modifier = modifier.fillMaxWidth(),
+      shape = PortalAniShapes.Field,
+      color = Color(0x10FFFFFF),
+      border = BorderStroke(1.dp, PortalAniColors.Border),
+  ) {
+    Text(
+        text = label,
+        color = PortalAniColors.TextPrimary,
+        fontSize = 17.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+    )
   }
 }

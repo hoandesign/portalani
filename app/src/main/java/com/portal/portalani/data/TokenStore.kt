@@ -62,11 +62,37 @@ class SettingsStore(context: Context) {
         } else {
           SourceMode.LIBRARY
         }
+    val listStatuses =
+        prefs.getString(KEY_LIST_STATUSES, null)
+            ?.split(',')
+            ?.mapNotNull { token ->
+              token.trim().takeIf { it.isNotEmpty() }?.let {
+                runCatching { ListStatus.valueOf(it) }.getOrNull()
+              }
+            }
+            ?.toSet()
+            ?.takeIf { it.isNotEmpty() }
+            ?: setOf(
+                ListStatus.valueOf(prefs.getString(KEY_LIST_STATUS, ListStatus.CURRENT.name)!!),
+            )
+    val weatherPlace = prefs.getString(KEY_WEATHER_PLACE, null)?.ifBlank { null }
+    val weatherLat =
+        if (weatherPlace != null) {
+          prefs.getFloat(KEY_WEATHER_LAT, Float.NaN).toDouble().takeIf { !it.isNaN() }
+        } else {
+          null
+        }
+    val weatherLon =
+        if (weatherPlace != null) {
+          prefs.getFloat(KEY_WEATHER_LON, Float.NaN).toDouble().takeIf { !it.isNaN() }
+        } else {
+          null
+        }
     return AppSettings(
         shuffle = prefs.getBoolean(KEY_SHUFFLE, true),
         intervalMs = prefs.getLong(KEY_INTERVAL_MS, 12_000L),
         sourceMode = sourceMode,
-        listStatus = ListStatus.valueOf(prefs.getString(KEY_LIST_STATUS, ListStatus.CURRENT.name)!!),
+        listStatuses = listStatuses,
         formatFilter =
             FormatFilter.valueOf(prefs.getString(KEY_FORMAT_FILTER, FormatFilter.ALL.name)!!),
         librarySort =
@@ -75,6 +101,17 @@ class SettingsStore(context: Context) {
         frameMode =
             runCatching { FrameMode.valueOf(prefs.getString(KEY_FRAME_MODE, FrameMode.POSTER_ONLY.name)!!) }
                 .getOrDefault(FrameMode.POSTER_ONLY),
+        showPosterClock = prefs.getBoolean(KEY_SHOW_POSTER_CLOCK, true),
+        showWeather = prefs.getBoolean(KEY_SHOW_WEATHER, false),
+        weatherFahrenheit =
+            if (prefs.contains(KEY_WEATHER_FAHRENHEIT)) {
+              prefs.getBoolean(KEY_WEATHER_FAHRENHEIT, false)
+            } else {
+              java.util.Locale.getDefault().country == "US"
+            },
+        weatherLat = weatherLat,
+        weatherLon = weatherLon,
+        weatherPlace = weatherPlace,
         powerMode =
             runCatching { PowerMode.valueOf(prefs.getString(KEY_POWER_MODE, PowerMode.ALWAYS_ON.name)!!) }
                 .getOrDefault(PowerMode.ALWAYS_ON),
@@ -99,11 +136,26 @@ class SettingsStore(context: Context) {
       putBoolean(KEY_SHUFFLE, settings.shuffle)
       putLong(KEY_INTERVAL_MS, settings.intervalMs)
       putString(KEY_SOURCE_MODE, settings.sourceMode.name)
-      putString(KEY_LIST_STATUS, settings.listStatus.name)
+      putString(
+          KEY_LIST_STATUSES,
+          settings.listStatuses.sortedBy { it.ordinal }.joinToString(",") { it.name },
+      )
       putString(KEY_FORMAT_FILTER, settings.formatFilter.name)
       putString(KEY_LIBRARY_SORT, settings.librarySort.name)
       putString(KEY_SEASON_KEY, settings.seasonKey)
       putString(KEY_FRAME_MODE, settings.frameMode.name)
+      putBoolean(KEY_SHOW_POSTER_CLOCK, settings.showPosterClock)
+      putBoolean(KEY_SHOW_WEATHER, settings.showWeather)
+      putBoolean(KEY_WEATHER_FAHRENHEIT, settings.weatherFahrenheit)
+      if (settings.weatherPlace != null && settings.weatherLat != null && settings.weatherLon != null) {
+        putFloat(KEY_WEATHER_LAT, settings.weatherLat.toFloat())
+        putFloat(KEY_WEATHER_LON, settings.weatherLon.toFloat())
+        putString(KEY_WEATHER_PLACE, settings.weatherPlace)
+      } else {
+        remove(KEY_WEATHER_LAT)
+        remove(KEY_WEATHER_LON)
+        remove(KEY_WEATHER_PLACE)
+      }
       putString(KEY_POWER_MODE, settings.powerMode.name)
       putInt(KEY_IDLE_SLEEP_MINUTES, settings.idleSleepMinutes)
       putInt(KEY_SLEEP_START_MINUTES, settings.sleepStartMinutes)
@@ -118,10 +170,17 @@ class SettingsStore(context: Context) {
     private const val KEY_USE_MY_LIST_LEGACY = "use_my_list"
     private const val KEY_SOURCE_MODE = "source_mode"
     private const val KEY_LIST_STATUS = "list_status"
+    private const val KEY_LIST_STATUSES = "list_statuses"
     private const val KEY_FORMAT_FILTER = "format_filter"
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_SEASON_KEY = "season_key"
     private const val KEY_FRAME_MODE = "frame_mode"
+    private const val KEY_SHOW_POSTER_CLOCK = "show_poster_clock"
+    private const val KEY_SHOW_WEATHER = "show_weather"
+    private const val KEY_WEATHER_FAHRENHEIT = "weather_fahrenheit"
+    private const val KEY_WEATHER_LAT = "weather_lat"
+    private const val KEY_WEATHER_LON = "weather_lon"
+    private const val KEY_WEATHER_PLACE = "weather_place"
     private const val KEY_POWER_MODE = "power_mode"
     private const val KEY_IDLE_SLEEP_MINUTES = "idle_sleep_minutes"
     private const val KEY_SLEEP_START_MINUTES = "sleep_start_minutes"

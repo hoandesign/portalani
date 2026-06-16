@@ -1,7 +1,14 @@
 package com.portal.portalani
 
+import android.Manifest
 import android.app.Application
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Bundle
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.portal.portalani.data.AniListAuth
@@ -16,18 +23,23 @@ import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.PowerMode
 import com.portal.portalani.data.PowerPolicy
+import com.portal.portalani.data.GeoPlace
 import com.portal.portalani.data.SettingsStore
 import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.TokenStore
+import com.portal.portalani.data.WeatherClient
+import com.portal.portalani.data.WeatherNow
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import org.json.JSONObject
 
 sealed interface UiState {
   data object Loading : UiState
@@ -65,6 +77,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val slideCache = AnimeSlideCache(app)
   private val auth = AniListAuth(http, tokens)
   private val client = AniListClient(http)
+  private val weatherClient = WeatherClient(http)
 
   private val _state = MutableStateFlow<UiState>(UiState.Loading)
   val state: StateFlow<UiState> = _state.asStateFlow()
@@ -84,11 +97,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val _onboardingComplete = MutableStateFlow(settingsStore.isOnboardingComplete())
   val onboardingComplete: StateFlow<Boolean> = _onboardingComplete.asStateFlow()
 
+  private val _weather = MutableStateFlow<WeatherNow?>(null)
+  val weather: StateFlow<WeatherNow?> = _weather.asStateFlow()
+
+  private val _geoStatus = MutableStateFlow<String?>(null)
+  val geoStatus: StateFlow<String?> = _geoStatus.asStateFlow()
+
+  private val _geoResults = MutableStateFlow<List<GeoPlace>>(emptyList())
+  val geoResults: StateFlow<List<GeoPlace>> = _geoResults.asStateFlow()
+
   private var pendingOAuthState: String? = null
 
   private var feedNextPage = 1
   private var feedHasMore = false
   private var feedLoadingMore = false
+  private var feedListPages: Map<ListStatus, Pair<Int, Boolean>> = emptyMap()
   private var orderResetToken = 0
   private var activeFeedKey: String? = null
 
@@ -96,6 +119,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ScreensaverGuardWorker.schedule(app)
     ScreensaverGuard.applyNow(app)
     refresh()
+    weatherLoop()
   }
 
   fun refresh(forceReload: Boolean = false) {
@@ -205,12 +229,201 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     updateSettings(_settings.value.copy(frameMode = mode))
   }
 
+  fun setShowPosterClock(enabled: Boolean) {
+    updateSettings(
+        _settings.value.copy(
+            showPosterClock = enabled,
+            showWeather = if (enabled) _settings.value.showWeather else false,
+        ),
+    )
+    if (!enabled) {
+      _geoResults.value = emptyList()
+      _geoStatus.value = null
+    }
+  }
+
+  fun setShowWeather(enabled: Boolean) {
+    if (enabled && !_settings.value.showPosterClock) return
+    updateSettings(_settings.value.copy(showWeather = enabled))
+    if (enabled) {
+      refreshWeather()
+    } else {
+      clearGeoSearch()
+    }
+  }
+
+  fun clearGeoSearch() {
+    _geoResults.value = emptyList()
+    _geoStatus.value = null
+  }
+
+  fun setWeatherFahrenheit(fahrenheit: Boolean) {
+    updateSettings(_settings.value.copy(weatherFahrenheit = fahrenheit))
+    refreshWeather()
+  }
+
+  fun searchLocation(query: String) {
+    if (query.isBlank()) return
+    viewModelScope.launch {
+      _geoStatus.value = "Searching…"
+      _geoResults.value = emptyList()
+      val results =
+          withContext(Dispatchers.IO) {
+            runCatching { weatherClient.geocode(query) }.getOrDefault(emptyList())
+          }
+      when {
+        results.isEmpty() -> _geoStatus.value = "Couldn't find that place"
+        results.size == 1 -> {
+          _geoStatus.value = null
+          chooseLocation(results.first())
+        }
+        else -> {
+          _geoStatus.value = null
+          _geoResults.value = results
+        }
+      }
+    }
+  }
+
+  fun chooseLocation(place: GeoPlace) {
+    updateSettings(
+        _settings.value.copy(
+            weatherLat = place.lat,
+            weatherLon = place.lon,
+            weatherPlace = place.label,
+        ),
+    )
+    _geoResults.value = emptyList()
+    _geoStatus.value = null
+    refreshWeather()
+  }
+
+  fun hasLocationPermission(): Boolean {
+    val ctx = getApplication<Application>()
+    return ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+  }
+
+  @Suppress("MissingPermission")
+  fun detectLocation() {
+    if (!hasLocationPermission()) {
+      _geoStatus.value = "Location permission not granted"
+      return
+    }
+    val ctx = getApplication<Application>()
+    val lm =
+        ctx.getSystemService(LocationManager::class.java)
+            ?: run {
+              _geoStatus.value = "Location services unavailable"
+              return
+            }
+    _geoStatus.value = "Getting location…"
+    _geoResults.value = emptyList()
+
+    val last: Location? =
+        lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            ?: lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+    if (last != null) {
+      applyDetectedLocation(last.latitude, last.longitude)
+      return
+    }
+
+    val provider =
+        when {
+          lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+          lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+          else -> {
+            _geoStatus.value = "No location provider available"
+            return
+          }
+        }
+    val listener =
+        object : LocationListener {
+          override fun onLocationChanged(loc: Location) {
+            lm.removeUpdates(this)
+            applyDetectedLocation(loc.latitude, loc.longitude)
+          }
+
+          override fun onProviderDisabled(provider: String) {
+            lm.removeUpdates(this)
+            _geoStatus.value = "Location provider disabled"
+          }
+
+          @Deprecated("Required on API <29", ReplaceWith(""))
+          override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+        }
+    @Suppress("DEPRECATION")
+    lm.requestSingleUpdate(provider, listener, null)
+  }
+
+  private fun applyDetectedLocation(lat: Double, lon: Double) {
+    viewModelScope.launch {
+      val label =
+          withContext(Dispatchers.IO) {
+            runCatching {
+                  val url =
+                      "https://nominatim.openstreetmap.org/reverse" +
+                          "?lat=$lat&lon=$lon&format=json&zoom=10"
+                  val req =
+                      okhttp3.Request.Builder()
+                          .url(url)
+                          .header("User-Agent", "PortalAni/1.0")
+                          .build()
+                  http.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@runCatching null
+                    val addr =
+                        JSONObject(resp.body?.string().orEmpty()).optJSONObject("address")
+                            ?: return@runCatching null
+                    listOfNotNull(
+                            addr.optString("city").ifBlank { null }
+                                ?: addr.optString("town").ifBlank { null }
+                                ?: addr.optString("village").ifBlank { null },
+                            addr.optString("state").ifBlank { null },
+                            addr.optString("country_code").uppercase().ifBlank { null },
+                        )
+                        .joinToString(", ")
+                        .ifBlank { null }
+                  }
+                }
+                .getOrNull()
+          }
+      chooseLocation(GeoPlace(lat, lon, label ?: "%.2f, %.2f".format(lat, lon)))
+      _geoStatus.value = null
+    }
+  }
+
+  private fun refreshWeather() {
+    val s = _settings.value
+    val lat = s.weatherLat
+    val lon = s.weatherLon
+    if (!s.showWeather || lat == null || lon == null) return
+    viewModelScope.launch {
+      val w =
+          withContext(Dispatchers.IO) {
+            runCatching { weatherClient.current(lat, lon, s.weatherFahrenheit) }.getOrNull()
+          }
+      if (w != null) _weather.value = w
+    }
+  }
+
+  private fun weatherLoop() {
+    viewModelScope.launch {
+      while (true) {
+        refreshWeather()
+        delay(30 * 60 * 1000L)
+      }
+    }
+  }
+
   fun setIntervalSeconds(seconds: Int) {
     updateSettings(_settings.value.copy(intervalMs = seconds.coerceIn(5, 120) * 1000L))
   }
 
-  fun setListStatus(status: ListStatus) {
-    updateSettings(_settings.value.copy(listStatus = status))
+  fun setListStatuses(statuses: Set<ListStatus>) {
+    if (statuses.isEmpty()) return
+    updateSettings(_settings.value.copy(listStatuses = statuses))
     refresh(forceReload = true)
   }
 
@@ -395,12 +608,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val userId =
                     tokens.viewerId()
                         ?: client.fetchViewer(token).also { tokens.saveViewer(it) }.id
-                client.fetchViewerListPages(
+                fetchPersonalSlides(
                     accessToken = token,
                     userId = userId,
-                    status = settings.listStatus,
-                    startPage = 1,
-                    pageCount = AniListClient.DEFAULT_INITIAL_PAGES,
+                    statuses = settings.listStatuses,
+                    initial = true,
                 )
               }
               SourceMode.LIBRARY ->
@@ -428,7 +640,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } else {
           val message =
               if (settings.sourceMode == SourceMode.PERSONAL) {
-                personalListEmptyMessage(settings.listStatus)
+                personalListEmptyMessage(settings.listStatuses)
               } else {
                 "No anime found for these filters. Try broader filters in Settings."
               }
@@ -477,12 +689,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                   val userId =
                       tokens.viewerId()
                           ?: client.fetchViewer(accessToken).also { tokens.saveViewer(it) }.id
-                  client.fetchViewerListPages(
+                  fetchPersonalSlides(
                       accessToken = accessToken,
                       userId = userId,
-                      status = settings.listStatus,
-                      startPage = feedNextPage,
-                      pageCount = AniListClient.DEFAULT_LOAD_MORE_PAGES,
+                      statuses = settings.listStatuses,
+                      initial = false,
                   )
                 }
                 SourceMode.LIBRARY ->
@@ -512,10 +723,54 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     if (activeFeedKey != cacheKey) {
       activeFeedKey = cacheKey
       orderResetToken++
+      feedListPages = emptyMap()
     }
     feedNextPage = 1
     feedHasMore = false
     feedLoadingMore = false
+  }
+
+  private suspend fun fetchPersonalSlides(
+      accessToken: String,
+      userId: Int,
+      statuses: Set<ListStatus>,
+      initial: Boolean,
+  ): FetchBatchResult {
+    if (statuses.isEmpty()) return FetchBatchResult(emptyList(), 1, false)
+
+    val merged = mutableListOf<AnimeSlide>()
+    val updatedPages = feedListPages.toMutableMap()
+    var anyHasMore = false
+
+    for (status in statuses.sortedBy { it.ordinal }) {
+      if (!initial) {
+        val hasMore = updatedPages[status]?.second == true
+        if (!hasMore) continue
+      }
+
+      val startPage = if (initial) 1 else updatedPages[status]?.first ?: 1
+      val pageCount =
+          if (initial) {
+            AniListClient.DEFAULT_INITIAL_PAGES
+          } else {
+            AniListClient.DEFAULT_LOAD_MORE_PAGES
+          }
+      val batch =
+          client.fetchViewerListPages(
+              accessToken = accessToken,
+              userId = userId,
+              status = status,
+              startPage = startPage,
+              pageCount = pageCount,
+          )
+      merged += batch.slides
+      updatedPages[status] = batch.nextPage to batch.hasMore
+      if (batch.hasMore) anyHasMore = true
+    }
+
+    feedListPages = updatedPages
+    feedHasMore = anyHasMore
+    return FetchBatchResult(merged, 1, anyHasMore)
   }
 
   private fun showingState(slides: List<AnimeSlide>, fromCache: Boolean): UiState.Showing =
@@ -545,7 +800,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ctx.startActivity(intent)
   }
 
-  private fun personalListEmptyMessage(status: ListStatus): String {
+  private fun personalListEmptyMessage(statuses: Set<ListStatus>): String {
+    if (statuses.isEmpty()) {
+      return "Choose at least one list in Settings."
+    }
+    if (statuses.size > 1) {
+      return "Your selected lists are empty on AniList. Try other lists in Settings, or add anime on anilist.co."
+    }
+    val status = statuses.first()
     val label =
         when (status) {
           ListStatus.CURRENT -> "Currently watching"

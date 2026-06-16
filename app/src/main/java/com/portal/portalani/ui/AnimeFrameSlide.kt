@@ -1,12 +1,8 @@
 package com.portal.portalani.ui
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -39,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -65,6 +63,25 @@ import com.portal.portalani.R
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.ListStatus
+import com.portal.portalani.data.MediaRanking
+import com.portal.portalani.data.RankScope
+import com.portal.portalani.data.RankType
+
+private fun AnimeSlide.bannerImageRequest(context: android.content.Context) =
+    ImageRequest.Builder(context)
+        .data(bannerUrl)
+        .crossfade(true)
+        .memoryCacheKey("banner-$id")
+        .diskCacheKey("banner-$id")
+        .build()
+
+private fun AnimeSlide.coverImageRequest(context: android.content.Context) =
+    ImageRequest.Builder(context)
+        .data(coverUrl)
+        .crossfade(true)
+        .memoryCacheKey("cover-$id")
+        .diskCacheKey("cover-$id")
+        .build()
 
 @Composable
 fun AnimeFrameSlide(
@@ -82,29 +99,7 @@ fun AnimeFrameSlide(
     onPosterLongPress: (() -> Unit)? = null,
 ) {
   val context = LocalContext.current
-  val transition = rememberInfiniteTransition(label = "parallax-${slide.id}")
-  val bgDriftX by
-      transition.animateFloat(
-          initialValue = -24f,
-          targetValue = 24f,
-          animationSpec =
-              infiniteRepeatable(
-                  animation = tween(28_000, easing = FastOutSlowInEasing),
-                  repeatMode = RepeatMode.Reverse,
-              ),
-          label = "bgX",
-      )
-  val bgDriftY by
-      transition.animateFloat(
-          initialValue = -14f,
-          targetValue = 14f,
-          animationSpec =
-              infiniteRepeatable(
-                  animation = tween(34_000, easing = FastOutSlowInEasing),
-                  repeatMode = RepeatMode.Reverse,
-              ),
-          label = "bgY",
-      )
+  val (bgDriftX, bgDriftY) = rememberPosterParallaxOffsets(enabled = !posterExpanded, slideId = slide.id)
   val posterDriftX = -bgDriftX * 0.22f
   val posterDriftY = -bgDriftY * 0.22f
 
@@ -183,11 +178,7 @@ private fun SlideParallaxBackground(
     posterOnly: Boolean,
 ) {
   AsyncImage(
-      model =
-          ImageRequest.Builder(context)
-              .data(slide.bannerUrl)
-              .crossfade(true)
-              .build(),
+      model = slide.bannerImageRequest(context),
       contentDescription = null,
       contentScale = ContentScale.Crop,
       modifier =
@@ -279,11 +270,7 @@ private fun InformativeFrameContent(
                 .border(1.5.dp, Color.White.copy(alpha = 0.16f * enter), posterShape),
     ) {
       AsyncImage(
-          model =
-              ImageRequest.Builder(context)
-                  .data(slide.coverUrl)
-                  .crossfade(true)
-                  .build(),
+          model = slide.coverImageRequest(context),
           contentDescription = slide.title,
           contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize().clip(posterShape),
@@ -341,19 +328,26 @@ private fun PosterModeFrameContent(
                   vertical = FrameViewerInsets.vertical,
               ),
   ) {
-    val collapsedHeightFraction = 1f
+    val collapsedPosterHeight =
+        run {
+          val heightIfWidthFits = maxWidth * (3f / 2f)
+          val height = min(maxHeight, heightIfWidthFits)
+          val width = height * (2f / 3f)
+          if (width <= maxWidth) height else maxWidth * (3f / 2f)
+        }
     val expandedHeightFraction = 0.94f
     val posterHeight =
-        maxHeight * (collapsedHeightFraction + (expandedHeightFraction - collapsedHeightFraction) * expandProgress)
+        collapsedPosterHeight *
+            (1f + (expandedHeightFraction - 1f) * expandProgress)
     val posterWidth = posterHeight * (2f / 3f)
-    val collapsedX = (maxWidth - posterWidth) / 2f
-    val posterX = lerp(collapsedX, 0.dp, expandProgress)
+    val centerToStartShift = (maxWidth - posterWidth) / 2f
+    val posterOffsetX = lerp(0.dp, -centerToStartShift, expandProgress)
     val driftScale = 1f - expandProgress * 0.65f
 
     Box(
         modifier =
-            Modifier.align(Alignment.CenterStart)
-                .offset(x = posterX)
+            Modifier.align(Alignment.Center)
+                .offset(x = posterOffsetX)
                 .width(posterWidth)
                 .height(posterHeight)
                 .graphicsLayer {
@@ -384,11 +378,7 @@ private fun PosterModeFrameContent(
                 ),
     ) {
       AsyncImage(
-          model =
-              ImageRequest.Builder(context)
-                  .data(slide.coverUrl)
-                  .crossfade(true)
-                  .build(),
+          model = slide.coverImageRequest(context),
           contentDescription = slide.title,
           contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize(),
@@ -446,6 +436,18 @@ private fun PosterModeFrameContent(
           if (score != null) {
             Spacer(Modifier.height(10.dp))
             CommunityScoreInline(score = score, compact = true)
+          }
+
+          slide.nextAiringLabel()?.let { airing ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = airing,
+                color = PortalAniColors.Cyan,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.75f), blurRadius = 10f)),
+            )
           }
         }
       }
@@ -536,27 +538,24 @@ private fun AnimeInfoPanel(
       )
     }
 
-    if (slide.ratedRankAllTime != null || slide.popularRankAllTime != null) {
+    if (slide.rankings.isNotEmpty()) {
       Spacer(Modifier.height(14.dp))
-      Row(
+      FlowRow(
           modifier = Modifier.widthIn(max = 760.dp),
           horizontalArrangement = Arrangement.spacedBy(10.dp),
-          verticalAlignment = Alignment.CenterVertically,
+          verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
-        slide.ratedRankAllTime?.let { rank ->
+        slide.rankings.forEach { ranking ->
+          val isRated = ranking.type == RankType.RATED
           RankStatChip(
-              rank = rank,
-              icon = PortalIcons.RankRated,
-              label = stringResource(R.string.rank_rated_label),
-              accent = PortalAniColors.Gold,
-          )
-        }
-        slide.popularRankAllTime?.let { rank ->
-          RankStatChip(
-              rank = rank,
-              icon = PortalIcons.RankPopular,
-              label = stringResource(R.string.rank_popular_label),
-              accent = PortalAniColors.Cyan,
+              rank = ranking.rank,
+              periodLabel = mediaRankingPeriodLabel(ranking),
+              icon = if (isRated) PortalIcons.RankRated else PortalIcons.RankPopular,
+              label =
+                  stringResource(
+                      if (isRated) R.string.rank_rated_label else R.string.rank_popular_label,
+                  ),
+              accent = if (isRated) PortalAniColors.Gold else PortalAniColors.Cyan,
           )
         }
       }
@@ -780,8 +779,35 @@ private fun QuickActionCluster(
 }
 
 @Composable
+private fun mediaRankingPeriodLabel(ranking: MediaRanking): String =
+    when (ranking.scope) {
+      RankScope.ALL_TIME -> stringResource(R.string.rank_all_time)
+      RankScope.YEAR -> ranking.year?.toString() ?: stringResource(R.string.rank_all_time)
+      RankScope.SEASON -> {
+        val season = rankingSeasonLabel(ranking.season)
+        when {
+          season != null && ranking.year != null ->
+              stringResource(R.string.rank_season_year, season, ranking.year)
+          ranking.year != null -> ranking.year.toString()
+          season != null -> season
+          else -> stringResource(R.string.rank_all_time)
+        }
+      }
+    }
+
+private fun rankingSeasonLabel(season: String?): String? =
+    when (season?.uppercase()) {
+      "WINTER" -> "Winter"
+      "SPRING" -> "Spring"
+      "SUMMER" -> "Summer"
+      "FALL" -> "Fall"
+      else -> null
+    }
+
+@Composable
 private fun RankStatChip(
     rank: Int,
+    periodLabel: String,
     icon: ImageVector,
     label: String,
     accent: Color,
@@ -822,7 +848,7 @@ private fun RankStatChip(
               lineHeight = 26.sp,
           )
           Text(
-              text = stringResource(R.string.rank_all_time),
+              text = periodLabel,
               color = PortalAniColors.TextMuted,
               fontSize = 12.sp,
               fontWeight = FontWeight.Medium,
@@ -840,12 +866,16 @@ private fun RankStatChip(
   }
 }
 
-private fun buildMetaLine(slide: AnimeSlide): String =
-    listOfNotNull(
-            slide.format?.replace('_', ' ')?.uppercase(),
-            slide.seasonYear?.toString() ?: slide.startDateYear?.toString(),
-            slide.episodes?.let { "$it eps" },
-            slide.studio,
-            slide.status?.replace('_', ' ')?.lowercase()?.replaceFirstChar { it.uppercase() },
-        )
-        .joinToString(" · ")
+private fun buildMetaLine(slide: AnimeSlide): String {
+  val statusLabel =
+      slide.nextAiringLabel()
+          ?: slide.status?.replace('_', ' ')?.lowercase()?.replaceFirstChar { it.uppercase() }
+  return listOfNotNull(
+          slide.format?.replace('_', ' ')?.uppercase(),
+          slide.seasonYear?.toString() ?: slide.startDateYear?.toString(),
+          slide.episodes?.let { "$it eps" },
+          slide.studio,
+          statusLabel,
+      )
+      .joinToString(" · ")
+}

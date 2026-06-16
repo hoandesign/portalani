@@ -67,18 +67,21 @@ private fun AnimeSlide.toJson(): JSONObject =
         .put("season", season)
         .put("seasonYear", seasonYear ?: JSONObject.NULL)
         .put("startDateYear", startDateYear ?: JSONObject.NULL)
+        .put("startDateMonth", startDateMonth ?: JSONObject.NULL)
+        .put("startDateDay", startDateDay ?: JSONObject.NULL)
         .put("format", format)
         .put("studio", studio)
         .put("genres", JSONArray(genres))
         .put("description", description)
-        .put("ratedRankAllTime", ratedRankAllTime ?: JSONObject.NULL)
-        .put("popularRankAllTime", popularRankAllTime ?: JSONObject.NULL)
+        .put("rankings", JSONArray().apply { rankings.forEach { put(it.toJson()) } })
         .put("siteUrl", siteUrl)
         .put("trailerYoutubeId", trailerYoutubeId)
         .put("listEntryId", listEntryId ?: JSONObject.NULL)
         .put("listStatus", listStatus?.name)
         .put("userScore", userScore?.toDouble() ?: JSONObject.NULL)
         .put("isFavourite", isFavourite)
+        .put("nextAiringEpisode", nextAiringEpisode ?: JSONObject.NULL)
+        .put("nextAiringAt", nextAiringAt ?: JSONObject.NULL)
 
 private fun JSONObject.toAnimeSlide(): AnimeSlide? {
   val cover = optString("coverUrl").takeIf { it.isNotBlank() && it != "null" } ?: return null
@@ -101,12 +104,13 @@ private fun JSONObject.toAnimeSlide(): AnimeSlide? {
       season = optString("season").takeIf { it.isNotBlank() && it != "null" },
       seasonYear = optInt("seasonYear").takeIf { it > 0 },
       startDateYear = optInt("startDateYear").takeIf { it > 0 },
+      startDateMonth = optInt("startDateMonth").takeIf { it > 0 },
+      startDateDay = optInt("startDateDay").takeIf { it > 0 },
       format = optString("format").takeIf { it.isNotBlank() && it != "null" },
       studio = optString("studio").takeIf { it.isNotBlank() && it != "null" },
       genres = genres,
       description = optString("description").takeIf { it.isNotBlank() && it != "null" },
-      ratedRankAllTime = optInt("ratedRankAllTime").takeIf { it > 0 },
-      popularRankAllTime = optInt("popularRankAllTime").takeIf { it > 0 },
+      rankings = parseStoredRankings(),
       siteUrl = optString("siteUrl").ifBlank { "https://anilist.co/anime/${getInt("id")}" },
       trailerYoutubeId = optString("trailerYoutubeId").takeIf { it.isNotBlank() && it != "null" },
       listEntryId = optInt("listEntryId").takeIf { it > 0 },
@@ -119,5 +123,68 @@ private fun JSONObject.toAnimeSlide(): AnimeSlide? {
             if (it <= 10f) it else it / 10f
           },
       isFavourite = optBoolean("isFavourite", false),
+      nextAiringEpisode = optInt("nextAiringEpisode").takeIf { it > 0 },
+      nextAiringAt = optInt("nextAiringAt").takeIf { it > 0 },
+  )
+}
+
+private fun JSONObject.parseStoredRankings(): List<MediaRanking> {
+  optJSONArray("rankings")?.let { array ->
+    val parsed =
+        buildList {
+          for (i in 0 until array.length()) {
+            array.optJSONObject(i)?.toMediaRanking()?.let { add(it) }
+          }
+        }
+    if (parsed.isNotEmpty()) return parsed
+  }
+  val legacy =
+      parseRankingList("ratedRankings", "ratedRanking", "ratedRankAllTime", RankType.RATED) +
+          parseRankingList("popularRankings", "popularRanking", "popularRankAllTime", RankType.POPULAR)
+  return MediaRanking.pickTop(legacy)
+}
+
+private fun JSONObject.parseRankingList(
+    arrayKey: String,
+    objectKey: String,
+    legacyIntKey: String,
+    defaultType: RankType,
+): List<MediaRanking> {
+  optJSONArray(arrayKey)?.let { array ->
+    return buildList {
+      for (i in 0 until array.length()) {
+        array.optJSONObject(i)?.toMediaRanking(defaultType)?.let { add(it) }
+      }
+    }
+  }
+  optJSONObject(objectKey)?.toMediaRanking(defaultType)?.let { return listOf(it) }
+  optInt(legacyIntKey).takeIf { it > 0 }?.let {
+    return listOf(MediaRanking(it, defaultType, RankScope.ALL_TIME))
+  }
+  return emptyList()
+}
+
+private fun MediaRanking.toJson(): JSONObject =
+    JSONObject()
+        .put("rank", rank)
+        .put("type", type.name)
+        .put("scope", scope.name)
+        .put("year", year ?: JSONObject.NULL)
+        .put("season", season)
+
+private fun JSONObject.toMediaRanking(defaultType: RankType = RankType.RATED): MediaRanking? {
+  val rank = optInt("rank").takeIf { it > 0 } ?: return null
+  val type =
+      optString("type").takeIf { it.isNotBlank() && it != "null" }?.let {
+        runCatching { RankType.valueOf(it) }.getOrNull()
+      } ?: defaultType
+  val scope =
+      runCatching { RankScope.valueOf(optString("scope")) }.getOrNull() ?: RankScope.ALL_TIME
+  return MediaRanking(
+      rank = rank,
+      type = type,
+      scope = scope,
+      year = optInt("year").takeIf { it > 0 },
+      season = optString("season").takeIf { it.isNotBlank() && it != "null" },
   )
 }

@@ -222,18 +222,41 @@ If it does not:
 
 1. Tap center → **Sign in with AniList**.
 2. Set source to **Personal**.
-3. Pick list status: Currently watching, Planning, Completed, etc.
+3. Pick one or more lists: Currently watching, Planning, Completed, etc.
 
 ### Settings reference
 
+**Slideshow:** frame mode, seconds per slide, shuffle.
+
+**What to show:** source (Personal vs Full library), then list status or catalog filters depending on source.
+
+**Clock & weather:** show clock, show weather, temperature unit (°C / °F), and location. Weather requires the clock to be on. Turning weather on without a saved location opens the location dialog.
+
 | Setting | Description |
 |---------|-------------|
-| Source | Personal (your lists) vs Full library (catalog) |
+| Source | Personal (your lists) vs Full library (catalog) — under **What to show** |
+| Frame mode | **Poster only** (centered poster + optional clock) or **Informative** (poster + synopsis side by side) |
 | Shuffle | Randomize slide order |
 | Seconds per slide | Auto-advance interval (5–120 s) |
-| List status | Which AniList list to show (Personal mode); each status has a distinct icon |
+| Lists | Which AniList lists to show (Personal mode); select multiple |
 | Format / Sort / Season | Catalog filters (Full library mode) |
+| Show clock | Time and date overlay in poster mode (bottom-left) |
+| Show weather | Current temp and icon beside the date; uses [Open-Meteo](https://open-meteo.com/), no API key |
+| Temperature | Celsius or Fahrenheit |
+| Location | City search or **Use my location**; stored on device for refresh |
 | Power | Always on (default), sleep after idle, or off during quiet hours (default 10 PM–7 AM; 30 min grace if opened during quiet hours) |
+
+### Clock & weather setup
+
+1. Open **Settings** (long-press center).
+2. Under **Clock & weather**, turn on **Show clock**.
+3. Optionally turn on **Show weather** — if you have no location yet, the location dialog opens.
+4. Pick **Use my location** (Portal will ask for location permission once) or search for a city and choose a match.
+5. Set **Temperature** to °C or °F if needed.
+
+The clock stays fixed while you swipe slides. It hides automatically when you flip a poster open for details, then fades back when you collapse.
+
+Weather needs network access (`INTERNET`). Location permission is optional and only requested when you tap **Use my location**.
 
 ### Slide info panel
 
@@ -252,6 +275,8 @@ When signed in and an anime is on your list, a colored status badge appears abov
 | Swipe stuck after list edit | Update to latest build (0.6.3+ fixes slide index reset) |
 | Gradle OOM | `GRADLE_OPTS="-Xmx2g" ./gradlew …` |
 | Offline | Last feed is cached; “Showing saved feed” badge appears |
+| Weather not showing | Enable clock + weather in settings; set a location; check network on Portal |
+| Location denied | Use city search instead of **Use my location**, or grant permission in Portal system settings |
 
 ---
 
