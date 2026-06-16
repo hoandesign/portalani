@@ -23,7 +23,7 @@ android {
     minSdk = 28
     targetSdk = 29
     versionCode = 33
-    versionName = "0.7.8"
+    versionName = "0.8.1"
 
     buildConfigField("String", "ANILIST_CLIENT_ID", "\"$anilistClientId\"")
     buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"$anilistClientSecret\"")

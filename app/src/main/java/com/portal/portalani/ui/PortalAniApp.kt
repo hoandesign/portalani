@@ -96,6 +96,8 @@ fun PortalAniApp(
     onSetSleepEndMinutes: (Int) -> Unit = {},
     onSlideIndexChanged: (Int) -> Unit = {},
     onUserInteraction: () -> Unit = {},
+    onboardingComplete: Boolean = true,
+    onCompleteOnboarding: () -> Unit = {},
     appVersion: String = "",
 ) {
   var showSettings by remember { mutableStateOf(false) }
@@ -141,6 +143,8 @@ fun PortalAniApp(
                 onRemoveFromList = onRemoveFromList,
                 onSlideIndexChanged = onSlideIndexChanged,
                 onUserInteraction = onUserInteraction,
+                onboardingComplete = onboardingComplete,
+                onCompleteOnboarding = onCompleteOnboarding,
             )
         is UiState.Error ->
             ErrorScreen(
@@ -287,6 +291,8 @@ private fun SlideshowScreen(
     onRemoveFromList: (Int) -> Unit,
     onSlideIndexChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
+    onboardingComplete: Boolean,
+    onCompleteOnboarding: () -> Unit,
 ) {
   var orderedIds by remember(orderResetToken, shuffle) {
     mutableStateOf(buildSlideOrder(slides.map { it.id }, shuffle, orderResetToken))
@@ -336,6 +342,12 @@ private fun SlideshowScreen(
   var scoreDialogMediaId by remember { mutableStateOf<Int?>(null) }
   var listDialogMediaId by remember { mutableStateOf<Int?>(null) }
   var showSignInPrompt by remember { mutableStateOf(false) }
+  var posterExpanded by remember { mutableStateOf(false) }
+  var guideStep by remember(onboardingComplete) {
+    mutableStateOf(
+        if (onboardingComplete) SlideshowGuideStep.Finished else SlideshowGuideStep.Swipe,
+    )
+  }
   var appInForeground by remember { mutableStateOf(true) }
   val context = LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
@@ -348,8 +360,39 @@ private fun SlideshowScreen(
   val density = LocalDensity.current
   val swipeThresholdPx = with(density) { 64.dp.toPx() }
 
+  val showGuide =
+      !onboardingComplete &&
+          guideStep != SlideshowGuideStep.Finished &&
+          !settingsOpen &&
+          !interactionOpen &&
+          trailerYoutubeId == null
+
+  fun advanceGuide(expected: SlideshowGuideStep) {
+    if (onboardingComplete || guideStep != expected) return
+    val next = nextSlideshowGuideStep(guideStep, frameMode)
+    guideStep = next
+    if (next == SlideshowGuideStep.Finished) {
+      onCompleteOnboarding()
+    }
+  }
+
+  LaunchedEffect(guideStep, onboardingComplete, frameMode, showGuide) {
+    if (!showGuide) return@LaunchedEffect
+    delay(12_000)
+    if (guideStep == SlideshowGuideStep.Finished) return@LaunchedEffect
+    val next = nextSlideshowGuideStep(guideStep, frameMode)
+    guideStep = next
+    if (next == SlideshowGuideStep.Finished) {
+      onCompleteOnboarding()
+    }
+  }
+
   LaunchedEffect(safeIndex, order.size) {
     onSlideIndexChanged(safeIndex)
+  }
+
+  LaunchedEffect(safeIndex, frameMode) {
+    posterExpanded = false
   }
 
   BackHandler(enabled = interactionOpen && !settingsOpen) {
@@ -377,7 +420,11 @@ private fun SlideshowScreen(
   }
 
   val slideshowPaused =
-      trailerYoutubeId != null || settingsOpen || !appInForeground || interactionOpen
+      trailerYoutubeId != null ||
+          settingsOpen ||
+          !appInForeground ||
+          interactionOpen ||
+          (frameMode == FrameMode.POSTER_ONLY && posterExpanded)
 
   fun restartSlideTimer() {
     navEpoch++
@@ -391,12 +438,14 @@ private fun SlideshowScreen(
 
   fun next() {
     if (order.isEmpty()) return
+    advanceGuide(SlideshowGuideStep.Swipe)
     index = (index + 1) % order.size
     restartSlideTimer()
   }
 
   fun previous() {
     if (order.isEmpty()) return
+    advanceGuide(SlideshowGuideStep.Swipe)
     index = if (index == 0) order.size - 1 else index - 1
     restartSlideTimer()
   }
@@ -431,6 +480,7 @@ private fun SlideshowScreen(
                               onLongPress = { offset ->
                                 onUserInteraction()
                                 if (offset.x >= size.width * 0.2f && offset.x <= size.width * 0.8f) {
+                                  advanceGuide(SlideshowGuideStep.HoldSettings)
                                   onToggleSettings()
                                 }
                               },
@@ -454,6 +504,13 @@ private fun SlideshowScreen(
           slide = slide,
           frameMode = frameMode,
           isSignedIn = isSignedIn,
+          posterExpanded = frameMode == FrameMode.POSTER_ONLY && posterExpanded,
+          onPosterToggle = {
+            onUserInteraction()
+            advanceGuide(SlideshowGuideStep.TapPoster)
+            posterExpanded = !posterExpanded
+            restartSlideTimer()
+          },
           onPlayTrailer =
               slide.trailerYoutubeId?.let { id ->
                 { trailerYoutubeId = id }
@@ -468,6 +525,12 @@ private fun SlideshowScreen(
           onEditList = { withSignIn { listDialogMediaId = slide.id } },
       )
     }
+
+    SlideshowGuideOverlay(
+        step = guideStep,
+        frameMode = frameMode,
+        visible = showGuide,
+    )
 
     if (fromCache) {
       Surface(
@@ -574,20 +637,61 @@ private fun SettingsPanel(
   var formatMenuOpen by remember { mutableStateOf(false) }
   var sortMenuOpen by remember { mutableStateOf(false) }
   var seasonMenuOpen by remember { mutableStateOf(false) }
+  var sourceMenuOpen by remember { mutableStateOf(false) }
+  var frameMenuOpen by remember { mutableStateOf(false) }
+  var intervalMenuOpen by remember { mutableStateOf(false) }
+  var powerMenuOpen by remember { mutableStateOf(false) }
+  var idleMenuOpen by remember { mutableStateOf(false) }
   var sleepStartMenuOpen by remember { mutableStateOf(false) }
   var sleepEndMenuOpen by remember { mutableStateOf(false) }
   val intervalSeconds = (settings.intervalMs / 1000L).toInt()
-  val listStatusOptions = ListStatus.entries.map { status -> status.name to statusLabel(status) }
+  val listStatusOptions = ListStatus.entries.map { status -> status.name to listStatusLabel(status) }
   val formatOptions = FormatFilter.entries.map { format -> format.name to format.label }
   val sortOptions = LibrarySort.entries.map { sort -> sort.name to sort.label }
+  val sourceOptions =
+      listOf(
+          SourceMode.PERSONAL.name to stringResource(R.string.source_personal),
+          SourceMode.LIBRARY.name to stringResource(R.string.source_library),
+      )
+  val frameOptions =
+      listOf(
+          FrameMode.INFORMATIVE.name to stringResource(R.string.frame_mode_informative),
+          FrameMode.POSTER_ONLY.name to stringResource(R.string.frame_mode_poster),
+      )
+  val intervalOptions = listOf(8, 12, 20, 30).map { seconds -> seconds.toString() to "$seconds s" }
+  val powerOptions =
+      listOf(
+          PowerMode.ALWAYS_ON.name to stringResource(R.string.power_always_on),
+          PowerMode.IDLE_SLEEP.name to stringResource(R.string.power_idle_sleep),
+          PowerMode.SCHEDULED_SLEEP.name to stringResource(R.string.power_scheduled_sleep),
+      )
+  val idleOptions =
+      PowerPolicy.IDLE_SLEEP_OPTIONS_MINUTES.map { minutes ->
+        minutes.toString() to PowerPolicy.formatIdleDuration(minutes)
+      }
   val anyMenuOpen =
-      statusMenuOpen || formatMenuOpen || sortMenuOpen || seasonMenuOpen || sleepStartMenuOpen || sleepEndMenuOpen
+      statusMenuOpen ||
+          formatMenuOpen ||
+          sortMenuOpen ||
+          seasonMenuOpen ||
+          sourceMenuOpen ||
+          frameMenuOpen ||
+          intervalMenuOpen ||
+          powerMenuOpen ||
+          idleMenuOpen ||
+          sleepStartMenuOpen ||
+          sleepEndMenuOpen
 
   BackHandler(enabled = anyMenuOpen) {
     statusMenuOpen = false
     formatMenuOpen = false
     sortMenuOpen = false
     seasonMenuOpen = false
+    sourceMenuOpen = false
+    frameMenuOpen = false
+    intervalMenuOpen = false
+    powerMenuOpen = false
+    idleMenuOpen = false
     sleepStartMenuOpen = false
     sleepEndMenuOpen = false
   }
@@ -605,7 +709,7 @@ private fun SettingsPanel(
         modifier =
             Modifier.padding(horizontal = 48.dp, vertical = 52.dp)
                 .fillMaxWidth()
-                .widthIn(max = 840.dp)
+                .widthIn(max = 720.dp)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
                 .clickable(
@@ -646,166 +750,177 @@ private fun SettingsPanel(
       )
       Spacer(Modifier.height(24.dp))
 
-      SettingsSectionTitle(stringResource(R.string.source_mode))
+      PortalSettingsSectionHeader(stringResource(R.string.settings_section_slideshow))
       Spacer(Modifier.height(10.dp))
-      PortalSegmentedControl(
-          options =
-              listOf(
-                  stringResource(R.string.source_personal),
-                  stringResource(R.string.source_library),
-              ),
-          selectedIndex = if (settings.sourceMode == SourceMode.PERSONAL) 0 else 1,
-          onSelect = { index ->
-            onSetSourceMode(if (index == 0) SourceMode.PERSONAL else SourceMode.LIBRARY)
-          },
-      )
-
-      Spacer(Modifier.height(24.dp))
-
-      if (settings.sourceMode == SourceMode.PERSONAL) {
-        if (viewerName != null) {
-          Text(
-              stringResource(R.string.signed_in_as, viewerName),
-              color = PortalAniColors.TextSecondary,
-              fontSize = 17.sp,
-          )
-          Spacer(Modifier.height(8.dp))
-          TextButton(onClick = onSignOut) {
-            Text(stringResource(R.string.sign_out), color = PortalAniColors.Accent)
-          }
-        } else {
-          PortalPrimaryButton(
-              text = stringResource(R.string.sign_in),
-              onClick = onSignIn,
-              modifier = Modifier.fillMaxWidth(),
-          )
-        }
-        Spacer(Modifier.height(18.dp))
-        PortalFilterField(
-            label = stringResource(R.string.list_status),
-            value = statusLabel(settings.listStatus),
-            onClick = { statusMenuOpen = true },
+      PortalSettingsGroup {
+        PortalSettingsRow(
+            label = stringResource(R.string.source_mode),
+            value =
+                if (settings.sourceMode == SourceMode.PERSONAL) {
+                  stringResource(R.string.source_personal)
+                } else {
+                  stringResource(R.string.source_library)
+                },
+            onClick = { sourceMenuOpen = true },
         )
-      } else {
-        Text(
-            stringResource(R.string.library_filters),
-            color = PortalAniColors.TextMuted,
-            fontSize = 15.sp,
+        PortalSettingsDivider()
+        PortalSettingsRow(
+            label = stringResource(R.string.frame_mode),
+            value =
+                if (settings.frameMode == FrameMode.INFORMATIVE) {
+                  stringResource(R.string.frame_mode_informative)
+                } else {
+                  stringResource(R.string.frame_mode_poster)
+                },
+            onClick = {
+              onUserInteraction()
+              frameMenuOpen = true
+            },
         )
-        Spacer(Modifier.height(14.dp))
-
-        PortalFilterField(
-            label = stringResource(R.string.format_filter),
-            value = settings.formatFilter.label,
-            onClick = { formatMenuOpen = true },
+        PortalSettingsDivider()
+        PortalSettingsRow(
+            label = stringResource(R.string.interval_seconds),
+            value = "$intervalSeconds s",
+            onClick = {
+              onUserInteraction()
+              intervalMenuOpen = true
+            },
         )
-
-        Spacer(Modifier.height(12.dp))
-        PortalFilterField(
-            label = stringResource(R.string.sort_by),
-            value = settings.librarySort.label,
-            onClick = { sortMenuOpen = true },
-        )
-
-        Spacer(Modifier.height(12.dp))
-        PortalFilterField(
-            label = stringResource(R.string.season_filter),
-            value = SeasonSelection.labelFor(settings.seasonKey),
-            onClick = { seasonMenuOpen = true },
+        PortalSettingsDivider()
+        PortalSettingsToggleRow(
+            label = stringResource(R.string.shuffle),
+            checked = settings.shuffle,
+            onCheckedChange = {
+              onUserInteraction()
+              onSetShuffle(it)
+            },
         )
       }
 
-      Spacer(Modifier.height(24.dp))
-      SettingsSectionTitle(stringResource(R.string.power_settings))
-      Spacer(Modifier.height(8.dp))
-      Text(
-          stringResource(R.string.power_hint),
-          color = PortalAniColors.TextMuted,
-          fontSize = 15.sp,
-          lineHeight = 21.sp,
-      )
-      Spacer(Modifier.height(12.dp))
-      PortalSegmentedControl(
-          options =
-              listOf(
-                  stringResource(R.string.power_always_on),
-                  stringResource(R.string.power_idle_sleep),
-                  stringResource(R.string.power_scheduled_sleep),
-              ),
-          selectedIndex =
-              when (settings.powerMode) {
-                PowerMode.ALWAYS_ON -> 0
-                PowerMode.IDLE_SLEEP -> 1
-                PowerMode.SCHEDULED_SLEEP -> 2
+      Spacer(Modifier.height(22.dp))
+      PortalSettingsSectionHeader(
+          title = stringResource(R.string.settings_section_content),
+          subtitle =
+              if (settings.sourceMode == SourceMode.LIBRARY) {
+                stringResource(R.string.library_filters)
+              } else {
+                null
               },
-          onSelect = { index ->
-            onUserInteraction()
-            onSetPowerMode(
-                when (index) {
-                  0 -> PowerMode.ALWAYS_ON
-                  1 -> PowerMode.IDLE_SLEEP
-                  else -> PowerMode.SCHEDULED_SLEEP
-                },
-            )
-          },
       )
+      Spacer(Modifier.height(10.dp))
+      PortalSettingsGroup {
+        if (settings.sourceMode == SourceMode.PERSONAL) {
+          PortalSettingsRow(
+              label = stringResource(R.string.list_status),
+              value = listStatusLabel(settings.listStatus),
+              onClick = { statusMenuOpen = true },
+          )
+        } else {
+          PortalSettingsRow(
+              label = stringResource(R.string.format_filter),
+              value = settings.formatFilter.label,
+              onClick = { formatMenuOpen = true },
+          )
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.sort_by),
+              value = settings.librarySort.label,
+              onClick = { sortMenuOpen = true },
+          )
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.season_filter),
+              value = SeasonSelection.labelFor(settings.seasonKey),
+              onClick = { seasonMenuOpen = true },
+          )
+        }
+      }
 
-      if (settings.powerMode == PowerMode.IDLE_SLEEP) {
-        Spacer(Modifier.height(14.dp))
-        Text(
-            stringResource(R.string.power_idle_after),
-            color = PortalAniColors.TextSecondary,
-            fontSize = 15.sp,
-        )
+      if (settings.sourceMode == SourceMode.PERSONAL) {
+        Spacer(Modifier.height(22.dp))
+        PortalSettingsSectionHeader(stringResource(R.string.settings_section_account))
         Spacer(Modifier.height(10.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PowerPolicy.IDLE_SLEEP_OPTIONS_MINUTES.take(4).forEach { minutes ->
-              PortalChoiceChip(
-                  label = PowerPolicy.formatIdleDuration(minutes),
-                  selected = settings.idleSleepMinutes == minutes,
-                  onClick = {
-                    onUserInteraction()
-                    onSetIdleSleepMinutes(minutes)
-                  },
-              )
-            }
+        PortalSettingsGroup {
+          if (viewerName != null) {
+            PortalSettingsRow(
+                label = stringResource(R.string.settings_section_account),
+                value = viewerName,
+                onClick = {},
+                enabled = false,
+                showChevron = false,
+            )
+            PortalSettingsDivider()
+            PortalSettingsActionRow(
+                label = stringResource(R.string.sign_out),
+                onClick = onSignOut,
+            )
+          } else {
+            PortalSettingsRow(
+                label = stringResource(R.string.settings_section_account),
+                value = stringResource(R.string.account_not_signed_in),
+                onClick = onSignIn,
+            )
           }
-          Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PowerPolicy.IDLE_SLEEP_OPTIONS_MINUTES.drop(4).forEach { minutes ->
-              PortalChoiceChip(
-                  label = PowerPolicy.formatIdleDuration(minutes),
-                  selected = settings.idleSleepMinutes == minutes,
-                  onClick = {
-                    onUserInteraction()
-                    onSetIdleSleepMinutes(minutes)
-                  },
-              )
-            }
-          }
+        }
+      }
+
+      Spacer(Modifier.height(22.dp))
+      PortalSettingsSectionHeader(
+          title = stringResource(R.string.power_settings),
+          subtitle = stringResource(R.string.power_hint),
+      )
+      Spacer(Modifier.height(10.dp))
+      PortalSettingsGroup {
+        PortalSettingsRow(
+            label = stringResource(R.string.power_mode),
+            value =
+                when (settings.powerMode) {
+                  PowerMode.ALWAYS_ON -> stringResource(R.string.power_always_on)
+                  PowerMode.IDLE_SLEEP -> stringResource(R.string.power_idle_sleep)
+                  PowerMode.SCHEDULED_SLEEP -> stringResource(R.string.power_scheduled_sleep)
+                },
+            onClick = {
+              onUserInteraction()
+              powerMenuOpen = true
+            },
+        )
+
+        if (settings.powerMode == PowerMode.IDLE_SLEEP) {
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.power_idle_after),
+              value = PowerPolicy.formatIdleDuration(settings.idleSleepMinutes),
+              onClick = {
+                onUserInteraction()
+                idleMenuOpen = true
+              },
+          )
+        }
+
+        if (settings.powerMode == PowerMode.SCHEDULED_SLEEP) {
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.power_sleep_from),
+              value = PowerPolicy.formatMinutesOfDay(settings.sleepStartMinutes),
+              onClick = {
+                onUserInteraction()
+                sleepStartMenuOpen = true
+              },
+          )
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.power_wake_at),
+              value = PowerPolicy.formatMinutesOfDay(settings.sleepEndMinutes),
+              onClick = {
+                onUserInteraction()
+                sleepEndMenuOpen = true
+              },
+          )
         }
       }
 
       if (settings.powerMode == PowerMode.SCHEDULED_SLEEP) {
-        Spacer(Modifier.height(14.dp))
-        PortalFilterField(
-            label = stringResource(R.string.power_sleep_from),
-            value = PowerPolicy.formatMinutesOfDay(settings.sleepStartMinutes),
-            onClick = {
-              onUserInteraction()
-              sleepStartMenuOpen = true
-            },
-        )
-        Spacer(Modifier.height(12.dp))
-        PortalFilterField(
-            label = stringResource(R.string.power_wake_at),
-            value = PowerPolicy.formatMinutesOfDay(settings.sleepEndMinutes),
-            onClick = {
-              onUserInteraction()
-              sleepEndMenuOpen = true
-            },
-        )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             stringResource(R.string.power_scheduled_hint),
             color = PortalAniColors.TextMuted,
@@ -814,57 +929,7 @@ private fun SettingsPanel(
         )
       }
 
-      Spacer(Modifier.height(24.dp))
-      SettingsSectionTitle(stringResource(R.string.frame_mode))
-      Spacer(Modifier.height(10.dp))
-      PortalSegmentedControl(
-          options =
-              listOf(
-                  stringResource(R.string.frame_mode_informative),
-                  stringResource(R.string.frame_mode_poster),
-              ),
-          selectedIndex = if (settings.frameMode == FrameMode.INFORMATIVE) 0 else 1,
-          onSelect = { index ->
-            onUserInteraction()
-            onSetFrameMode(if (index == 0) FrameMode.INFORMATIVE else FrameMode.POSTER_ONLY)
-          },
-      )
-
-      Spacer(Modifier.height(24.dp))
-      SettingRow(stringResource(R.string.shuffle)) {
-        Switch(
-            checked = settings.shuffle,
-            onCheckedChange = {
-              onUserInteraction()
-              onSetShuffle(it)
-            },
-            colors =
-                androidx.compose.material3.SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = PortalAniColors.Accent,
-                    uncheckedThumbColor = PortalAniColors.TextSecondary,
-                    uncheckedTrackColor = PortalAniColors.SurfaceElevated,
-                ),
-        )
-      }
-
-      Spacer(Modifier.height(12.dp))
-      SettingsSectionTitle(stringResource(R.string.interval_seconds))
-      Spacer(Modifier.height(10.dp))
-      Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        listOf(8, 12, 20, 30).forEach { seconds ->
-          PortalChoiceChip(
-              label = "$seconds s",
-              selected = intervalSeconds == seconds,
-              onClick = {
-                onUserInteraction()
-                onSetIntervalSeconds(seconds)
-              },
-          )
-        }
-      }
-
-      Spacer(Modifier.height(12.dp))
+      Spacer(Modifier.height(20.dp))
       if (appVersion.isNotBlank()) {
         Text(
             text = stringResource(R.string.app_version, appVersion),
@@ -875,6 +940,68 @@ private fun SettingsPanel(
       }
       }
     }
+  }
+
+  if (sourceMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.source_mode),
+        options = sourceOptions,
+        selectedKey = settings.sourceMode.name,
+        onDismiss = { sourceMenuOpen = false },
+        onSelect = { key -> onSetSourceMode(SourceMode.valueOf(key)) },
+    )
+  }
+
+  if (frameMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.frame_mode),
+        options = frameOptions,
+        selectedKey = settings.frameMode.name,
+        onDismiss = { frameMenuOpen = false },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetFrameMode(FrameMode.valueOf(key))
+        },
+    )
+  }
+
+  if (intervalMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.interval_seconds),
+        options = intervalOptions,
+        selectedKey = intervalSeconds.toString(),
+        onDismiss = { intervalMenuOpen = false },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetIntervalSeconds(key.toIntOrNull() ?: intervalSeconds)
+        },
+    )
+  }
+
+  if (powerMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.power_settings),
+        options = powerOptions,
+        selectedKey = settings.powerMode.name,
+        onDismiss = { powerMenuOpen = false },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetPowerMode(PowerMode.valueOf(key))
+        },
+    )
+  }
+
+  if (idleMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.power_idle_after),
+        options = idleOptions,
+        selectedKey = settings.idleSleepMinutes.toString(),
+        onDismiss = { idleMenuOpen = false },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetIdleSleepMinutes(key.toIntOrNull() ?: settings.idleSleepMinutes)
+        },
+    )
   }
 
   if (statusMenuOpen) {
@@ -936,39 +1063,6 @@ private fun SettingsPanel(
     )
   }
 }
-
-@Composable
-private fun SettingsSectionTitle(text: String) {
-  Text(
-      text = text,
-      color = PortalAniColors.TextPrimary,
-      fontSize = 17.sp,
-      fontWeight = FontWeight.SemiBold,
-  )
-}
-
-@Composable
-private fun SettingRow(label: String, control: @Composable () -> Unit) {
-  Row(
-      modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Text(label, color = PortalAniColors.TextPrimary, fontSize = 18.sp)
-    control()
-  }
-}
-
-@Composable
-private fun statusLabel(status: ListStatus): String =
-    when (status) {
-      ListStatus.CURRENT -> stringResource(R.string.status_current)
-      ListStatus.PLANNING -> stringResource(R.string.status_planning)
-      ListStatus.COMPLETED -> stringResource(R.string.status_completed)
-      ListStatus.PAUSED -> stringResource(R.string.status_paused)
-      ListStatus.DROPPED -> stringResource(R.string.status_dropped)
-      ListStatus.REPEATING -> stringResource(R.string.status_repeating)
-    }
 
 private fun buildSlideOrder(ids: List<Int>, shuffle: Boolean, seed: Int): List<Int> =
     if (shuffle) {

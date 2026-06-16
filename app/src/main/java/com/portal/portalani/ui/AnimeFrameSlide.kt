@@ -1,5 +1,6 @@
 package com.portal.portalani.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -7,6 +8,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -48,6 +54,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -61,13 +69,15 @@ import com.portal.portalani.data.ListStatus
 fun AnimeFrameSlide(
     slide: AnimeSlide,
     modifier: Modifier = Modifier,
-    frameMode: FrameMode = FrameMode.INFORMATIVE,
+    frameMode: FrameMode = FrameMode.POSTER_ONLY,
     isSignedIn: Boolean = false,
     onPlayTrailer: (() -> Unit)? = null,
     onOpenAniList: (() -> Unit)? = null,
     onTapScore: (() -> Unit)? = null,
     onToggleFavourite: (() -> Unit)? = null,
     onEditList: (() -> Unit)? = null,
+    posterExpanded: Boolean = false,
+    onPosterToggle: () -> Unit = {},
 ) {
   val context = LocalContext.current
   val transition = rememberInfiniteTransition(label = "parallax-${slide.id}")
@@ -106,6 +116,12 @@ fun AnimeFrameSlide(
   val bgScale = 1.34f - (0.12f * enter)
   val bgAlpha = 0.62f * enter
 
+  val expandProgress by animateFloatAsState(
+      targetValue = if (posterExpanded) 1f else 0f,
+      animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+      label = "posterExpand",
+  )
+
   Box(modifier = modifier.fillMaxSize()) {
     SlideParallaxBackground(
         slide = slide,
@@ -115,7 +131,7 @@ fun AnimeFrameSlide(
         bgAlpha = bgAlpha,
         bgDriftX = bgDriftX,
         bgDriftY = bgDriftY,
-        posterOnly = frameMode == FrameMode.POSTER_ONLY,
+        posterOnly = frameMode == FrameMode.POSTER_ONLY && expandProgress < 0.92f,
     )
 
     when (frameMode) {
@@ -134,12 +150,19 @@ fun AnimeFrameSlide(
               onEditList = onEditList,
           )
       FrameMode.POSTER_ONLY ->
-          PosterOnlyFrameContent(
+          PosterModeFrameContent(
               slide = slide,
               context = context,
               enter = enter,
+              expandProgress = expandProgress,
               posterDriftX = posterDriftX,
               posterDriftY = posterDriftY,
+              onPosterToggle = onPosterToggle,
+              onPlayTrailer = onPlayTrailer,
+              onOpenAniList = onOpenAniList,
+              onTapScore = onTapScore,
+              onToggleFavourite = onToggleFavourite,
+              onEditList = onEditList,
           )
     }
   }
@@ -281,41 +304,70 @@ private fun InformativeFrameContent(
 }
 
 @Composable
-private fun PosterOnlyFrameContent(
+private fun PosterModeFrameContent(
     slide: AnimeSlide,
     context: android.content.Context,
     enter: Float,
+    expandProgress: Float,
     posterDriftX: Float,
     posterDriftY: Float,
+    onPosterToggle: () -> Unit,
+    onPlayTrailer: (() -> Unit)?,
+    onOpenAniList: (() -> Unit)?,
+    onTapScore: (() -> Unit)?,
+    onToggleFavourite: (() -> Unit)?,
+    onEditList: (() -> Unit)?,
 ) {
   val posterShape = PortalAniShapes.Poster
   val score = slide.averageScore?.let { it / 10.0 }
+  val density = LocalDensity.current
+  val overlayAlpha = (1f - expandProgress * 1.35f).coerceIn(0f, 1f)
+  val flipRotationY = expandProgress * 180f
+  val flipMirror = flipRotationY > 90f
 
-  Box(
-      modifier = Modifier.fillMaxSize().padding(vertical = 40.dp, horizontal = 48.dp),
-      contentAlignment = Alignment.Center,
+  BoxWithConstraints(
+      modifier = Modifier.fillMaxSize().padding(top = 44.dp, bottom = 20.dp, start = 40.dp, end = 44.dp),
   ) {
+    val collapsedHeightFraction = 0.98f
+    val expandedHeightFraction = 0.94f
+    val posterHeight =
+        maxHeight * (collapsedHeightFraction + (expandedHeightFraction - collapsedHeightFraction) * expandProgress)
+    val posterWidth = posterHeight * (2f / 3f)
+    val collapsedX = (maxWidth - posterWidth) / 2f
+    val posterX = lerp(collapsedX, 0.dp, expandProgress)
+    val driftScale = 1f - expandProgress * 0.65f
+
     Box(
         modifier =
-            Modifier.fillMaxHeight(0.9f)
-                .aspectRatio(2f / 3f)
+            Modifier.align(Alignment.CenterStart)
+                .offset(x = posterX)
+                .width(posterWidth)
+                .height(posterHeight)
                 .graphicsLayer {
-                  val posterScale = 0.92f + (0.08f * enter)
-                  scaleX = posterScale
+                  val posterScale = 0.94f + (0.06f * enter)
+                  val mirrorScale = if (flipMirror) -1f else 1f
+                  scaleX = posterScale * mirrorScale
                   scaleY = posterScale
                   alpha = enter
-                  translationX = posterDriftX
-                  translationY = posterDriftY + (1f - enter) * 24f
+                  translationX = posterDriftX * driftScale
+                  translationY = posterDriftY * driftScale + (1f - enter) * 20f * (1f - expandProgress)
+                  rotationY = flipRotationY
+                  cameraDistance = 14f * density.density
                 }
                 .shadow(
-                    elevation = 28.dp,
+                    elevation = lerp(32.dp, 24.dp, expandProgress),
                     shape = posterShape,
                     clip = true,
                     ambientColor = Color.Black,
                     spotColor = Color.Black,
                 )
                 .clip(posterShape)
-                .border(1.5.dp, Color.White.copy(alpha = 0.18f * enter), posterShape),
+                .border(1.5.dp, Color.White.copy(alpha = 0.2f * enter), posterShape)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = onPosterToggle,
+                ),
     ) {
       AsyncImage(
           model =
@@ -328,57 +380,83 @@ private fun PosterOnlyFrameContent(
           modifier = Modifier.fillMaxSize(),
       )
 
-      Box(
-          modifier =
-              Modifier.align(Alignment.BottomCenter)
-                  .fillMaxWidth()
-                  .height(168.dp)
-                  .background(
-                      Brush.verticalGradient(
-                          0f to Color.Transparent,
-                          0.45f to Color(0x88000000),
-                          1f to Color(0xE6000000),
-                      ),
-                  ),
-      )
-
-      Column(
-          modifier =
-              Modifier.align(Alignment.BottomCenter)
-                  .fillMaxWidth()
-                  .padding(horizontal = 22.dp, vertical = 20.dp),
-          horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        Text(
-            text = slide.title,
-            color = PortalAniColors.TextPrimary,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 26.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.9f), blurRadius = 16f)),
+      if (overlayAlpha > 0.02f) {
+        Box(
+            modifier =
+                Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(168.dp)
+                    .graphicsLayer { alpha = overlayAlpha }
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.45f to Color(0x88000000),
+                            1f to Color(0xE6000000),
+                        ),
+                    ),
         )
 
-        if (!slide.nativeTitle.isNullOrBlank()) {
-          Spacer(Modifier.height(4.dp))
+        Column(
+            modifier =
+                Modifier.align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = overlayAlpha }
+                    .padding(horizontal = 22.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
           Text(
-              text = slide.nativeTitle,
-              color = PortalAniColors.TextMuted,
-              fontSize = 15.sp,
+              text = slide.title,
+              color = PortalAniColors.TextPrimary,
+              fontSize = 22.sp,
+              fontWeight = FontWeight.Bold,
+              lineHeight = 26.sp,
               maxLines = 2,
               overflow = TextOverflow.Ellipsis,
               textAlign = TextAlign.Center,
-              style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.75f), blurRadius = 10f)),
+              style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.9f), blurRadius = 16f)),
           )
-        }
 
-        if (score != null) {
-          Spacer(Modifier.height(10.dp))
-          CommunityScoreInline(score = score, compact = true)
+          if (!slide.nativeTitle.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = slide.nativeTitle,
+                color = PortalAniColors.TextMuted,
+                fontSize = 15.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.75f), blurRadius = 10f)),
+            )
+          }
+
+          if (score != null) {
+            Spacer(Modifier.height(10.dp))
+            CommunityScoreInline(score = score, compact = true)
+          }
         }
       }
+    }
+
+    if (expandProgress > 0.04f) {
+      val infoAlpha = ((expandProgress - 0.22f) / 0.78f).coerceIn(0f, 1f)
+      val infoEnter = infoAlpha * enter
+      AnimeInfoPanel(
+          slide = slide,
+          modifier =
+              Modifier.align(Alignment.CenterEnd)
+                  .width((maxWidth - posterWidth - 36.dp).coerceAtLeast(280.dp))
+                  .fillMaxHeight()
+                  .graphicsLayer {
+                    alpha = infoEnter
+                    translationX = (1f - expandProgress) * 56f
+                    translationY = (1f - expandProgress) * 18f
+                  },
+          onPlayTrailer = onPlayTrailer,
+          onOpenAniList = onOpenAniList,
+          onTapScore = onTapScore,
+          onToggleFavourite = onToggleFavourite,
+          onEditList = onEditList,
+      )
     }
   }
 }

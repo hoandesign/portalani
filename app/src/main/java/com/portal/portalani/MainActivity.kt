@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
         val viewerName by vm.viewerName.collectAsStateWithLifecycle()
         val isSignedIn by vm.isSignedIn.collectAsStateWithLifecycle()
         val userMessage by vm.userMessage.collectAsStateWithLifecycle()
+        val onboardingComplete by vm.onboardingComplete.collectAsStateWithLifecycle()
         var lastUserInteractionMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
         val slideshowAllowed = PowerPolicy.shouldRunSlideshow(settings)
 
@@ -91,6 +92,8 @@ class MainActivity : ComponentActivity() {
             onSetSleepEndMinutes = vm::setSleepEndMinutes,
             onSlideIndexChanged = vm::onSlideIndexChanged,
             onUserInteraction = { lastUserInteractionMs = System.currentTimeMillis() },
+            onboardingComplete = onboardingComplete,
+            onCompleteOnboarding = vm::completeOnboarding,
             appVersion = BuildConfig.VERSION_NAME,
         )
       }

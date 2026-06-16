@@ -73,8 +73,8 @@ class SettingsStore(context: Context) {
             LibrarySort.valueOf(prefs.getString(KEY_LIBRARY_SORT, LibrarySort.POPULARITY.name)!!),
         seasonKey = prefs.getString(KEY_SEASON_KEY, SeasonSelection.ANY_KEY)!!,
         frameMode =
-            runCatching { FrameMode.valueOf(prefs.getString(KEY_FRAME_MODE, FrameMode.INFORMATIVE.name)!!) }
-                .getOrDefault(FrameMode.INFORMATIVE),
+            runCatching { FrameMode.valueOf(prefs.getString(KEY_FRAME_MODE, FrameMode.POSTER_ONLY.name)!!) }
+                .getOrDefault(FrameMode.POSTER_ONLY),
         powerMode =
             runCatching { PowerMode.valueOf(prefs.getString(KEY_POWER_MODE, PowerMode.ALWAYS_ON.name)!!) }
                 .getOrDefault(PowerMode.ALWAYS_ON),
@@ -82,6 +82,12 @@ class SettingsStore(context: Context) {
         sleepStartMinutes = prefs.getInt(KEY_SLEEP_START_MINUTES, PowerPolicy.DEFAULT_SLEEP_START_MINUTES),
         sleepEndMinutes = prefs.getInt(KEY_SLEEP_END_MINUTES, PowerPolicy.DEFAULT_SLEEP_END_MINUTES),
     )
+  }
+
+  fun isOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
+
+  fun setOnboardingComplete() {
+    prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, true) }
   }
 
   fun save(settings: AppSettings) {
@@ -116,5 +122,6 @@ class SettingsStore(context: Context) {
     private const val KEY_IDLE_SLEEP_MINUTES = "idle_sleep_minutes"
     private const val KEY_SLEEP_START_MINUTES = "sleep_start_minutes"
     private const val KEY_SLEEP_END_MINUTES = "sleep_end_minutes"
+    private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
   }
 }

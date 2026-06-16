@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -48,6 +50,12 @@ object PortalAniColors {
   val Cyan = Color(0xFF7DD3FC)
   val Score = Color(0xFF3B82F6)
   val Overlay = Color(0xCC05070C)
+}
+
+object PortalDialogWidths {
+  val Picker = 400.dp
+  val SeasonPicker = 520.dp
+  val Form = 440.dp
 }
 
 object PortalAniShapes {
@@ -189,6 +197,165 @@ fun PortalChoiceChip(
           fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
       )
     }
+  }
+}
+
+@Composable
+fun PortalSettingsSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+) {
+  Column(modifier = modifier.fillMaxWidth()) {
+    Text(
+        text = title,
+        color = PortalAniColors.TextPrimary,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.3.sp,
+    )
+    if (!subtitle.isNullOrBlank()) {
+      Spacer(Modifier.height(4.dp))
+      Text(
+          text = subtitle,
+          color = PortalAniColors.TextMuted,
+          fontSize = 14.sp,
+          lineHeight = 19.sp,
+      )
+    }
+  }
+}
+
+@Composable
+fun PortalSettingsGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+  Surface(
+      modifier = modifier.fillMaxWidth(),
+      shape = PortalAniShapes.Panel,
+      color = PortalAniColors.SurfaceElevated,
+      border = BorderStroke(1.dp, PortalAniColors.Border),
+  ) {
+    Column(modifier = Modifier.padding(vertical = 4.dp), content = content)
+  }
+}
+
+@Composable
+fun PortalSettingsDivider() {
+  Box(
+      modifier =
+          Modifier.fillMaxWidth()
+              .padding(horizontal = 20.dp)
+              .height(1.dp)
+              .background(PortalAniColors.Border),
+  )
+}
+
+@Composable
+fun PortalSettingsRow(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    showChevron: Boolean = true,
+) {
+  Surface(
+      onClick = onClick,
+      enabled = enabled,
+      modifier = modifier.fillMaxWidth(),
+      color = Color.Transparent,
+  ) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+          text = label,
+          color = if (enabled) PortalAniColors.TextPrimary else PortalAniColors.TextMuted,
+          fontSize = 18.sp,
+          modifier = Modifier.weight(1f).padding(end = 16.dp),
+      )
+      Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        if (value.isNotBlank()) {
+          Text(
+              text = value,
+              color = if (enabled) PortalAniColors.TextMuted else PortalAniColors.TextMuted.copy(alpha = 0.55f),
+              fontSize = 17.sp,
+              fontWeight = FontWeight.Medium,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+          )
+        }
+        if (showChevron && enabled) {
+          Icon(
+              imageVector = PortalIcons.Dropdown,
+              contentDescription = null,
+              tint = PortalAniColors.TextMuted,
+              modifier = Modifier.size(20.dp),
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+fun PortalSettingsActionRow(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    labelColor: Color = PortalAniColors.Accent,
+) {
+  Surface(
+      onClick = onClick,
+      modifier = modifier.fillMaxWidth(),
+      color = Color.Transparent,
+  ) {
+    Text(
+        text = label,
+        color = labelColor,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+    )
+  }
+}
+
+@Composable
+fun PortalSettingsToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+  Row(
+      modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+        text = label,
+        color = PortalAniColors.TextPrimary,
+        fontSize = 18.sp,
+        modifier = Modifier.weight(1f).padding(end = 16.dp),
+    )
+    androidx.compose.material3.Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors =
+            androidx.compose.material3.SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = PortalAniColors.Accent,
+                uncheckedThumbColor = PortalAniColors.TextSecondary,
+                uncheckedTrackColor = PortalAniColors.Surface,
+            ),
+    )
   }
 }
 

@@ -81,6 +81,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val _userMessage = MutableStateFlow<String?>(null)
   val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
+  private val _onboardingComplete = MutableStateFlow(settingsStore.isOnboardingComplete())
+  val onboardingComplete: StateFlow<Boolean> = _onboardingComplete.asStateFlow()
+
   private var pendingOAuthState: String? = null
 
   private var feedNextPage = 1
@@ -185,6 +188,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setShuffle(enabled: Boolean) {
     updateSettings(_settings.value.copy(shuffle = enabled))
+  }
+
+  fun completeOnboarding() {
+    if (_onboardingComplete.value) return
+    settingsStore.setOnboardingComplete()
+    _onboardingComplete.value = true
   }
 
   fun setFrameMode(mode: FrameMode) {

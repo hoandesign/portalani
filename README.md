@@ -1,83 +1,44 @@
 # Portal Ani
 
-AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slideshow with cover art, rankings, trailers, and optional sign-in to browse your personal AniList library.
+AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slideshow with cover art, rankings, trailers, and optional AniList sign-in.
 
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Current version:** 0.7.8
+**Version:** 0.8.1
 
 ## Features
 
-- Cinematic slideshow with banner parallax, poster, synopsis, and genre tags
-- Slide info panel: list-status badge (with icon), title, score + studio/meta row, ranks, synopsis, genres
-- **Personal** mode — your AniList lists (watching, planning, completed, etc.) with status icons
-- **Full library** mode — browse the public catalog with season, format, and sort filters
-- AniList OAuth sign-in (rate, favourite, add to list)
-- All-time rank badges, community score, YouTube trailers
-- Shuffle and configurable slide interval
-- Power modes: always on, sleep when idle (30 min–8 h), or scheduled quiet hours (default 10 PM–7 AM)
-- Offline cache of the last loaded feed
+- **Poster mode** (default) — large centered poster; tap to flip and reveal full details
+- **Informative mode** — poster plus synopsis, genres, and actions side by side
+- **Personal** — your AniList lists (watching, planning, completed, …)
+- **Full library** — browse the catalog with season, format, and sort filters
+- AniList OAuth (rate, favourite, add to list), YouTube trailers, offline cache
+- Shuffle, slide interval, and power/sleep options
 - Registers as Portal idle screensaver (`DreamService`)
 
 ## Quick start
 
-1. Follow **[docs/SETUP.md](docs/SETUP.md)** — AniList app, Android build, and Portal deploy.
+1. Follow **[docs/SETUP.md](docs/SETUP.md)** — AniList OAuth app, build, and Portal deploy.
 2. Build: `GRADLE_OPTS="-Xmx2g" ./gradlew assembleDebug`
-3. Deploy: `bash scripts/deploy.sh --build` (script auto-rebuilds if sources are newer than the APK)
+3. Deploy: `bash scripts/deploy.sh --build`
 
-## Usage on Portal
+## Gestures on Portal
 
-| Action | Gesture |
-|--------|---------|
-| Settings | Tap center of screen |
-| Next slide | Swipe left or tap right edge |
-| Previous slide | Swipe right or tap left edge |
-| Rate / Favourite / List | Icon cluster (bottom-right of info panel) |
+| Action | How |
+|--------|-----|
+| **Next slide** | Swipe left or tap right edge |
+| **Previous slide** | Swipe right or tap left edge |
+| **Settings** | Long-press center |
+| **More info** (poster mode) | Tap the poster — flips to informative layout; tap again to collapse |
 
-### List status icons
-
-| Status | Icon |
-|--------|------|
-| Currently watching | Play |
-| Planning | Plus |
-| Completed | Check |
-| Paused | Info |
-| Dropped | Close |
-| Rewatching | Refresh |
-
-When the Portal sleeps, the slideshow should start automatically if screensaver registration succeeded during deploy.
-
-## Project layout
-
-```
-portalani/
-├── app/src/main/java/com/portal/portalani/
-│   ├── MainActivity.kt / MainViewModel.kt   # App shell & state
-│   ├── AnimeDreamService.kt                 # Portal screensaver entry
-│   ├── AniListOAuthActivity.kt              # In-app OAuth WebView
-│   ├── data/                                # AniList API, cache, settings
-│   └── ui/                                  # Compose UI
-├── scripts/deploy.sh                          # Build, install, screensaver setup
-├── docs/SETUP.md                            # Full setup guide
-└── local.properties.example                 # Secrets template (do not commit real file)
-```
-
-## Requirements
-
-- **Portal:** Meta Portal family (see [supported devices](docs/SETUP.md#supported-devices)) with **Settings → Debug → ADB Enabled** and USB-C to your computer
-- **Dev machine:** JDK 11+, Android SDK, `adb` (or [hzdb](https://www.npmjs.com/package/@meta-quest/hzdb))
-- **AniList:** OAuth application ([developer settings](https://anilist.co/settings/developer))
+On first launch, subtle on-screen hints walk through swipe, hold-for-settings, and tap-poster. They fade away after you try each gesture or after a short pause.
 
 ## Security
 
-- `local.properties` holds your AniList **client secret** — it is gitignored.
-- OAuth tokens are stored in app private storage on the Portal.
-- Use `adb install -r` (replace) when updating; **do not uninstall** unless you want to clear sign-in.
-
-## API
-
-Uses [AniList GraphQL](https://graphql.anilist.co) and OAuth2 authorization code flow ([docs](https://docs.anilist.co/guide/introduction)). Access tokens last about one year; sign in again when expired.
+- `local.properties` holds your AniList client secret (gitignored).
+- OAuth tokens live in app private storage on the Portal.
+- Use `adb install -r` when updating; uninstall only if you want to clear sign-in.
 
 ## License
 

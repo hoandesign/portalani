@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -66,9 +67,7 @@ fun PortalPickerDialog(
   ) {
     Column(
         modifier =
-            Modifier.padding(horizontal = 48.dp)
-                .fillMaxWidth()
-                .widthIn(max = 560.dp)
+            Modifier.width(PortalDialogWidths.Picker)
                 .heightIn(max = 460.dp)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
@@ -116,9 +115,7 @@ fun PortalSeasonPickerDialog(
   ) {
     Column(
         modifier =
-            Modifier.padding(horizontal = 40.dp)
-                .fillMaxWidth()
-                .widthIn(max = 720.dp)
+            Modifier.width(PortalDialogWidths.SeasonPicker)
                 .heightIn(max = 520.dp)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
