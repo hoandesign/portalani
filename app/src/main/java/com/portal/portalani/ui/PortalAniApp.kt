@@ -98,6 +98,7 @@ fun PortalAniApp(
     onUserInteraction: () -> Unit = {},
     onboardingComplete: Boolean = true,
     onCompleteOnboarding: () -> Unit = {},
+    onResetOnboarding: () -> Unit = {},
     appVersion: String = "",
 ) {
   var showSettings by remember { mutableStateOf(false) }
@@ -176,6 +177,7 @@ fun PortalAniApp(
           onSetSleepStartMinutes = onSetSleepStartMinutes,
           onSetSleepEndMinutes = onSetSleepEndMinutes,
           onUserInteraction = onUserInteraction,
+          onResetOnboarding = onResetOnboarding,
           appVersion = appVersion,
       )
     }
@@ -391,6 +393,12 @@ private fun SlideshowScreen(
     onSlideIndexChanged(safeIndex)
   }
 
+  LaunchedEffect(onboardingComplete) {
+    if (!onboardingComplete) {
+      guideStep = SlideshowGuideStep.Swipe
+    }
+  }
+
   LaunchedEffect(safeIndex, frameMode) {
     posterExpanded = false
   }
@@ -510,6 +518,11 @@ private fun SlideshowScreen(
             advanceGuide(SlideshowGuideStep.TapPoster)
             posterExpanded = !posterExpanded
             restartSlideTimer()
+          },
+          onPosterLongPress = {
+            onUserInteraction()
+            advanceGuide(SlideshowGuideStep.HoldSettings)
+            onToggleSettings()
           },
           onPlayTrailer =
               slide.trailerYoutubeId?.let { id ->
@@ -631,6 +644,7 @@ private fun SettingsPanel(
     onSetSleepStartMinutes: (Int) -> Unit,
     onSetSleepEndMinutes: (Int) -> Unit,
     onUserInteraction: () -> Unit,
+    onResetOnboarding: () -> Unit,
     appVersion: String,
 ) {
   var statusMenuOpen by remember { mutableStateOf(false) }
@@ -836,32 +850,40 @@ private fun SettingsPanel(
         }
       }
 
-      if (settings.sourceMode == SourceMode.PERSONAL) {
-        Spacer(Modifier.height(22.dp))
-        PortalSettingsSectionHeader(stringResource(R.string.settings_section_account))
-        Spacer(Modifier.height(10.dp))
-        PortalSettingsGroup {
-          if (viewerName != null) {
-            PortalSettingsRow(
-                label = stringResource(R.string.settings_section_account),
-                value = viewerName,
-                onClick = {},
-                enabled = false,
-                showChevron = false,
-            )
-            PortalSettingsDivider()
-            PortalSettingsActionRow(
-                label = stringResource(R.string.sign_out),
-                onClick = onSignOut,
-            )
-          } else {
-            PortalSettingsRow(
-                label = stringResource(R.string.settings_section_account),
-                value = stringResource(R.string.account_not_signed_in),
-                onClick = onSignIn,
-            )
-          }
+      Spacer(Modifier.height(22.dp))
+      PortalSettingsSectionHeader(stringResource(R.string.settings_section_account))
+      Spacer(Modifier.height(10.dp))
+      PortalSettingsGroup {
+        if (viewerName != null) {
+          PortalSettingsRow(
+              label = stringResource(R.string.settings_section_account),
+              value = viewerName,
+              onClick = {},
+              enabled = false,
+              showChevron = false,
+          )
+          PortalSettingsDivider()
+          PortalSettingsActionRow(
+              label = stringResource(R.string.sign_out),
+              onClick = onSignOut,
+          )
+        } else {
+          PortalSettingsRow(
+              label = stringResource(R.string.settings_section_account),
+              value = stringResource(R.string.account_not_signed_in),
+              onClick = onSignIn,
+          )
         }
+        PortalSettingsDivider()
+        PortalSettingsRow(
+            label = stringResource(R.string.settings_show_guide),
+            value = stringResource(R.string.settings_show_guide_action),
+            onClick = {
+              onUserInteraction()
+              onResetOnboarding()
+              onDismiss()
+            },
+        )
       }
 
       Spacer(Modifier.height(22.dp))

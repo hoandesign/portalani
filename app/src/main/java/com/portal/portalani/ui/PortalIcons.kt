@@ -2,12 +2,15 @@ package com.portal.portalani.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -22,4 +25,8 @@ object PortalIcons {
   val Check: ImageVector = Icons.Filled.Check
   val Close: ImageVector = Icons.Filled.Close
   val Dropdown: ImageVector = Icons.Filled.ArrowDropDown
+  val SwipeBack: ImageVector = Icons.AutoMirrored.Filled.ArrowBack
+  val SwipeForward: ImageVector = Icons.AutoMirrored.Filled.ArrowForward
+  val Settings: ImageVector = Icons.Filled.Settings
+  val TapPoster: ImageVector = Icons.Filled.Add
 }

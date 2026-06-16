@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
             onUserInteraction = { lastUserInteractionMs = System.currentTimeMillis() },
             onboardingComplete = onboardingComplete,
             onCompleteOnboarding = vm::completeOnboarding,
+            onResetOnboarding = vm::resetOnboarding,
             appVersion = BuildConfig.VERSION_NAME,
         )
       }

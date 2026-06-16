@@ -197,8 +197,16 @@ object SeasonSelection {
       ANY_KEY -> return SeasonPickerState(SeasonPickerSeason.ANY, SeasonPickerYear.Any)
       CURRENT_KEY -> return SeasonPickerState(SeasonPickerSeason.CURRENT, SeasonPickerYear.Any)
       PREVIOUS_KEY -> return SeasonPickerState(SeasonPickerSeason.PREVIOUS, SeasonPickerYear.Any)
-      THIS_YEAR_KEY -> return SeasonPickerState(SeasonPickerSeason.ANY, SeasonPickerYear.ThisYear)
-      LAST_YEAR_KEY -> return SeasonPickerState(SeasonPickerSeason.ANY, SeasonPickerYear.LastYear)
+      THIS_YEAR_KEY ->
+          return SeasonPickerState(
+              SeasonPickerSeason.ANY,
+              SeasonPickerYear.Specific(Calendar.getInstance().get(Calendar.YEAR)),
+          )
+      LAST_YEAR_KEY ->
+          return SeasonPickerState(
+              SeasonPickerSeason.ANY,
+              SeasonPickerYear.Specific(Calendar.getInstance().get(Calendar.YEAR) - 1),
+          )
     }
     if (key.startsWith("year:")) {
       val yearToken = key.removePrefix("year:")
@@ -226,8 +234,6 @@ object SeasonSelection {
     if (state.season == SeasonPickerSeason.CURRENT) return CURRENT_KEY
     if (state.season == SeasonPickerSeason.PREVIOUS) return PREVIOUS_KEY
     if (state.season == SeasonPickerSeason.ANY && state.year is SeasonPickerYear.Any) return ANY_KEY
-    if (state.season == SeasonPickerSeason.ANY && state.year is SeasonPickerYear.ThisYear) return THIS_YEAR_KEY
-    if (state.season == SeasonPickerSeason.ANY && state.year is SeasonPickerYear.LastYear) return LAST_YEAR_KEY
     if (state.season == SeasonPickerSeason.ANY && state.year is SeasonPickerYear.Specific) {
       return "year:${state.year.year}"
     }
@@ -257,7 +263,18 @@ object SeasonSelection {
 
   fun yearColumnOptions(nowYear: Int = Calendar.getInstance().get(Calendar.YEAR)): List<SeasonPickerYear> {
     val years = (nowYear downTo MIN_YEAR).map { SeasonPickerYear.Specific(it) }
-    return listOf(SeasonPickerYear.Any, SeasonPickerYear.ThisYear, SeasonPickerYear.LastYear) + years
+    return listOf(SeasonPickerYear.Any) + years
+  }
+
+  fun normalizePickerState(state: SeasonPickerState): SeasonPickerState {
+    val nowYear = Calendar.getInstance().get(Calendar.YEAR)
+    val normalizedYear =
+        when (val year = state.year) {
+          SeasonPickerYear.ThisYear -> SeasonPickerYear.Specific(nowYear)
+          SeasonPickerYear.LastYear -> SeasonPickerYear.Specific(nowYear - 1)
+          else -> year
+        }
+    return if (normalizedYear == state.year) state else state.copy(year = normalizedYear)
   }
 
   private fun SeasonPickerState(): SeasonPickerState =

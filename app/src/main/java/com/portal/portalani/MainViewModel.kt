@@ -196,6 +196,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     _onboardingComplete.value = true
   }
 
+  fun resetOnboarding() {
+    settingsStore.clearOnboardingComplete()
+    _onboardingComplete.value = false
+  }
+
   fun setFrameMode(mode: FrameMode) {
     updateSettings(_settings.value.copy(frameMode = mode))
   }

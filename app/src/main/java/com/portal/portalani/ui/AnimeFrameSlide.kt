@@ -8,7 +8,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.background
@@ -78,6 +79,7 @@ fun AnimeFrameSlide(
     onEditList: (() -> Unit)? = null,
     posterExpanded: Boolean = false,
     onPosterToggle: () -> Unit = {},
+    onPosterLongPress: (() -> Unit)? = null,
 ) {
   val context = LocalContext.current
   val transition = rememberInfiniteTransition(label = "parallax-${slide.id}")
@@ -158,6 +160,7 @@ fun AnimeFrameSlide(
               posterDriftX = posterDriftX,
               posterDriftY = posterDriftY,
               onPosterToggle = onPosterToggle,
+              onPosterLongPress = onPosterLongPress,
               onPlayTrailer = onPlayTrailer,
               onOpenAniList = onOpenAniList,
               onTapScore = onTapScore,
@@ -303,6 +306,7 @@ private fun InformativeFrameContent(
   }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PosterModeFrameContent(
     slide: AnimeSlide,
@@ -312,6 +316,7 @@ private fun PosterModeFrameContent(
     posterDriftX: Float,
     posterDriftY: Float,
     onPosterToggle: () -> Unit,
+    onPosterLongPress: (() -> Unit)?,
     onPlayTrailer: (() -> Unit)?,
     onOpenAniList: (() -> Unit)?,
     onTapScore: (() -> Unit)?,
@@ -363,10 +368,11 @@ private fun PosterModeFrameContent(
                 )
                 .clip(posterShape)
                 .border(1.5.dp, Color.White.copy(alpha = 0.2f * enter), posterShape)
-                .clickable(
+                .combinedClickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick = onPosterToggle,
+                    onLongClick = { onPosterLongPress?.invoke() },
                 ),
     ) {
       AsyncImage(

@@ -103,7 +103,7 @@ fun PortalSeasonPickerDialog(
     onDismiss: () -> Unit,
     onApply: (String) -> Unit,
 ) {
-  var draft by remember(initialState) { mutableStateOf(initialState) }
+  var draft by remember(initialState) { mutableStateOf(SeasonSelection.normalizePickerState(initialState)) }
   val nowYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) }
   val seasonOptions = remember { SeasonSelection.seasonColumnOptions() }
   val yearOptions = remember(nowYear) { SeasonSelection.yearColumnOptions(nowYear) }

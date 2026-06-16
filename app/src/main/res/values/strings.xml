@@ -12,6 +12,8 @@
     <string name="settings_section_content">What to show</string>
     <string name="settings_section_account">Account</string>
     <string name="account_not_signed_in">Sign in</string>
+    <string name="settings_show_guide">Gesture guide</string>
+    <string name="settings_show_guide_action">Show again</string>
     <string name="shuffle">Shuffle slides</string>
     <string name="frame_mode">Frame mode</string>
     <string name="frame_mode_informative">Informative</string>
@@ -42,9 +44,8 @@
     <string name="signed_in_as">Signed in as %1$s</string>
     <string name="sign_out">Sign out</string>
     <string name="screensaver_hint">Long-press center for settings. Swipe or tap screen edges to change slide. Tap poster for details.</string>
-    <string name="guide_swipe_left">← Swipe</string>
-    <string name="guide_swipe_right">Swipe →</string>
-    <string name="guide_hold_settings">Hold center for settings</string>
+    <string name="guide_swipe">Swipe</string>
+    <string name="guide_hold_settings">Hold for settings</string>
     <string name="guide_tap_poster">Tap poster for details</string>
     <string name="source_mode">Source</string>
     <string name="source_personal">Personal</string>

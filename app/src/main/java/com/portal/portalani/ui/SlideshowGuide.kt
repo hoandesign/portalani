@@ -7,9 +7,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,7 +21,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -75,17 +81,25 @@ fun SlideshowGuideOverlay(
           label = "guidePulseAlpha",
       )
   val hintAlpha = fade * pulse.value
+  val swipeLabel = stringResource(R.string.guide_swipe)
 
-  Box(modifier = modifier.fillMaxSize()) {
+  Box(
+      modifier =
+          modifier
+              .fillMaxSize()
+              .pointerInteropFilter { false },
+  ) {
     when (step) {
       SlideshowGuideStep.Swipe -> {
         GuideHintPill(
-            text = stringResource(R.string.guide_swipe_left),
+            text = swipeLabel,
+            leadingIcon = PortalIcons.SwipeBack,
             modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp),
             alpha = hintAlpha,
         )
         GuideHintPill(
-            text = stringResource(R.string.guide_swipe_right),
+            text = swipeLabel,
+            trailingIcon = PortalIcons.SwipeForward,
             modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp),
             alpha = hintAlpha,
         )
@@ -93,6 +107,7 @@ fun SlideshowGuideOverlay(
       SlideshowGuideStep.HoldSettings ->
           GuideHintPill(
               text = stringResource(R.string.guide_hold_settings),
+              leadingIcon = PortalIcons.Settings,
               modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
               alpha = hintAlpha,
           )
@@ -100,6 +115,7 @@ fun SlideshowGuideOverlay(
           if (frameMode == FrameMode.POSTER_ONLY) {
             GuideHintPill(
                 text = stringResource(R.string.guide_tap_poster),
+                leadingIcon = PortalIcons.TapPoster,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
                 alpha = hintAlpha,
             )
@@ -114,6 +130,8 @@ private fun GuideHintPill(
     text: String,
     modifier: Modifier = Modifier,
     alpha: Float,
+    leadingIcon: ImageVector? = null,
+    trailingIcon: ImageVector? = null,
 ) {
   Surface(
       modifier = modifier.graphicsLayer { this.alpha = alpha },
@@ -121,12 +139,33 @@ private fun GuideHintPill(
       color = Color(0x6605070C),
       border = androidx.compose.foundation.BorderStroke(1.dp, PortalAniColors.Border),
   ) {
-    Text(
-        text = text,
-        color = PortalAniColors.TextSecondary,
-        fontSize = 15.sp,
-        fontWeight = FontWeight.Medium,
+    Row(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      leadingIcon?.let { icon ->
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = PortalAniColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+      }
+      Text(
+          text = text,
+          color = PortalAniColors.TextSecondary,
+          fontSize = 15.sp,
+          fontWeight = FontWeight.Medium,
+      )
+      trailingIcon?.let { icon ->
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = PortalAniColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+      }
+    }
   }
 }

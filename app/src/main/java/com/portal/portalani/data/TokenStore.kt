@@ -90,6 +90,10 @@ class SettingsStore(context: Context) {
     prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, true) }
   }
 
+  fun clearOnboardingComplete() {
+    prefs.edit { putBoolean(KEY_ONBOARDING_COMPLETE, false) }
+  }
+
   fun save(settings: AppSettings) {
     prefs.edit {
       putBoolean(KEY_SHUFFLE, settings.shuffle)
