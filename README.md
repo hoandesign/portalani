@@ -5,7 +5,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.8.2
+**Version:** 0.8.10
 
 ## Features
 
@@ -39,6 +39,16 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - `local.properties` holds your AniList client secret (gitignored).
 - OAuth tokens live in app private storage on the Portal.
 - Use `adb install -r` when updating; uninstall only if you want to clear sign-in.
+
+## Screenshots
+
+Captured on Meta Portal (1280×800 landscape).
+
+![Poster mode — centered cover art with title overlay](docs/screenshots/poster-mode.png)
+
+![Detail view — synopsis, rankings, genres, and actions](docs/screenshots/detail-view.png)
+
+![Settings — slideshow source, frame mode, filters, and shuffle](docs/screenshots/settings.png)
 
 ## License
 

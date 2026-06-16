@@ -75,12 +75,14 @@
     <string name="your_score_value">Your score: %1$d</string>
     <string name="score_none">No score</string>
     <string name="score_clear">Clear</string>
-    <string name="score_slider_hint">Slide from 0 (none) to 10. Saves to your AniList.</string>
+    <string name="score_slider_hint">Tap or slide across the stars. Saved to your AniList (out of 10).</string>
+    <string name="score_dialog_title">Your rating</string>
+    <string name="score_out_of_ten">%1$d / 10</string>
+    <string name="list_dialog_add_title">Add to list</string>
+    <string name="list_dialog_change_title">Change list</string>
     <string name="toggle_favourite">Favourite</string>
     <string name="edit_list">Add or change list</string>
-    <string name="list_status_dialog_hint">Pick a list or switch lists for this anime.</string>
+    <string name="list_status_dialog_hint">Choose where this anime belongs on your AniList.</string>
     <string name="remove_from_list">Remove from list</string>
     <string name="sign_in_for_actions">Sign in to rate, favourite, and manage your lists.</string>
-    <string name="score_dialog_title">Rate %1$s</string>
-    <string name="list_dialog_title">Your list · %1$s</string>
 </resources>

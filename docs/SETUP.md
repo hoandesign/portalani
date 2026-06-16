@@ -205,8 +205,9 @@ If it does not:
 - Re-run `scripts/deploy.sh` to re-grant permissions and re-register the dream component.
 - Open Portal Ani once from the launcher (the app re-asserts the screensaver on resume).
 - **Another screensaver app installed?** Portal only runs one dream at a time. If you also have [portal-gphotos](https://github.com/ram-nat/portal-gphotos) or similar, whichever app last re-registered wins. Open Portal Ani after the other app, or redeploy Portal Ani, to switch back.
-- Portal’s launcher resets the screensaver on boot; Portal Ani re-applies it via boot receiver + a 15-minute background guard (same approach as portal-gphotos).
+- Portal’s launcher resets the screensaver on boot; Portal Ani re-applies it via boot receiver + a 5-minute background guard (portal-gphotos uses 15 minutes).
 - **Quiet hours** (Settings → Power → Off when sleeping): during the sleep window the screensaver stays off by design.
+- **portal-gphotos still installed?** Uninstall it, or open Portal Ani after using Photos — both apps fight over `screensaver_components` every few minutes.
 
 ---
 

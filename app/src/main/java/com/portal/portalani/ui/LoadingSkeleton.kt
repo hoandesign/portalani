@@ -50,14 +50,17 @@ fun AnimeLoadingScreen(
     Row(
         modifier =
             Modifier.fillMaxSize()
-                .padding(top = 56.dp, bottom = 32.dp, start = 40.dp, end = 44.dp),
+                .padding(
+                    horizontal = FrameViewerInsets.horizontal,
+                    vertical = FrameViewerInsets.vertical,
+                ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(36.dp),
     ) {
       ShimmerBlock(
           brush = shimmer,
           modifier =
-              Modifier.fillMaxHeight(0.94f)
+              Modifier.fillMaxHeight(0.98f)
                   .aspectRatio(2f / 3f)
                   .clip(PortalAniShapes.Poster),
       )

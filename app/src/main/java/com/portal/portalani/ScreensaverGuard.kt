@@ -33,6 +33,37 @@ object ScreensaverGuard {
     return applyPowerPolicy(context, settings)
   }
 
+  /**
+   * Re-assert only [AnimeDreamService] in `screensaver_components` when the slideshow should run.
+   * Used by the periodic worker (same shape as portal-gphotos) so we can win races without
+   * re-reading quiet-hours policy on every tick.
+   */
+  fun reassertComponentIfActive(context: Context): Boolean {
+    val settings = SettingsStore(context).load()
+    if (!PowerPolicy.shouldRunSlideshow(settings)) return true
+    return reassertComponent(context)
+  }
+
+  private fun reassertComponent(context: Context): Boolean {
+    return try {
+      val cr = context.contentResolver
+      val current = Settings.Secure.getString(cr, KEY_COMPONENTS)
+      if (current != AnimeDreamService.COMPONENT) {
+        Settings.Secure.putString(cr, KEY_COMPONENTS, AnimeDreamService.COMPONENT)
+        Log.i(TAG, "re-asserted screensaver_components (was: $current)")
+      }
+      true
+    } catch (e: SecurityException) {
+      Log.w(
+          TAG,
+          "WRITE_SECURE_SETTINGS not granted — run: adb shell pm grant " +
+              "com.portal.portalani android.permission.WRITE_SECURE_SETTINGS",
+          e,
+      )
+      false
+    }
+  }
+
   /** Enable/disable the dream and re-assert our component when the slideshow should run. */
   fun applyPowerPolicy(context: Context, settings: AppSettings): Boolean {
     return try {
@@ -40,11 +71,7 @@ object ScreensaverGuard {
       if (PowerPolicy.shouldRunSlideshow(settings)) {
         Settings.Secure.putInt(cr, KEY_ENABLED, 1)
         Settings.Secure.putInt(cr, KEY_ACTIVATE_ON_SLEEP, 1)
-        val current = Settings.Secure.getString(cr, KEY_COMPONENTS)
-        if (current != AnimeDreamService.COMPONENT) {
-          Settings.Secure.putString(cr, KEY_COMPONENTS, AnimeDreamService.COMPONENT)
-          Log.i(TAG, "re-asserted screensaver_components (was: $current)")
-        }
+        reassertComponent(context)
       } else {
         Settings.Secure.putInt(cr, KEY_ENABLED, 0)
         Log.i(TAG, "quiet-hours policy: screensaver disabled")
@@ -62,20 +89,32 @@ object ScreensaverGuard {
   }
 
   fun ensureScheduled(context: Context) {
-    val request = PeriodicWorkRequestBuilder<ScreensaverGuardWorker>(15, TimeUnit.MINUTES).build()
+    val request = PeriodicWorkRequestBuilder<ScreensaverGuardWorker>(5, TimeUnit.MINUTES).build()
     WorkManager.getInstance(context)
         .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
   }
 
   /** Delayed passes after boot — the launcher usually wins the immediate race. */
   fun scheduleBootReassert(context: Context) {
+    scheduleDelayedReassert(context, "${WORK_NAME}_boot")
+  }
+
+  /**
+   * Delayed passes after the app backgrounds. Another screensaver app (e.g. portal-gphotos) may
+   * overwrite `screensaver_components` on its own schedule — these land after we leave foreground.
+   */
+  fun scheduleBackgroundReassert(context: Context) {
+    scheduleDelayedReassert(context, "${WORK_NAME}_bg")
+  }
+
+  private fun scheduleDelayedReassert(context: Context, namePrefix: String) {
     val wm = WorkManager.getInstance(context)
     listOf(15L, 60L, 180L).forEachIndexed { index, delaySec ->
       val request =
           OneTimeWorkRequestBuilder<ScreensaverGuardWorker>()
               .setInitialDelay(delaySec, TimeUnit.SECONDS)
               .build()
-      wm.enqueueUniqueWork("${WORK_NAME}_boot_$index", ExistingWorkPolicy.REPLACE, request)
+      wm.enqueueUniqueWork("${namePrefix}_$index", ExistingWorkPolicy.REPLACE, request)
     }
   }
 }

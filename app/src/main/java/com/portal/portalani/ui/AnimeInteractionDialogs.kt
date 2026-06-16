@@ -3,7 +3,9 @@ package com.portal.portalani.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,24 +21,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -417,143 +419,263 @@ fun PortalIconActionButton(
 }
 
 @Composable
-fun ScoreSliderDialog(
+fun PortalFormDialog(
     title: String,
-    initialScore: Float?,
     onDismiss: () -> Unit,
-    onSave: (Float?) -> Unit,
+    modifier: Modifier = Modifier,
+    width: Dp = PortalDialogWidths.Form,
+    maxHeight: Dp? = 560.dp,
+    subtitle: String? = null,
+    footer: @Composable (() -> Unit)? = null,
+    content: @Composable () -> Unit,
 ) {
-  var sliderValue by remember { mutableFloatStateOf(initialScore ?: 0f) }
-  var hasScore by remember { mutableStateOf(initialScore != null && initialScore > 0f) }
-
   Dialog(
       onDismissRequest = onDismiss,
       properties = DialogProperties(usePlatformDefaultWidth = false),
   ) {
     Column(
         modifier =
-            Modifier.padding(horizontal = 48.dp)
-                .fillMaxWidth()
-                .widthIn(max = 560.dp)
+            modifier
+                .width(width)
+                .then(if (maxHeight != null) Modifier.heightIn(max = maxHeight) else Modifier)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
-                .padding(horizontal = 28.dp, vertical = 24.dp),
+                .padding(horizontal = 22.dp, vertical = 20.dp),
     ) {
-      Text(title, color = PortalAniColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-      Spacer(Modifier.height(8.dp))
-      Text(
-          stringResource(R.string.score_slider_hint),
-          color = PortalAniColors.TextMuted,
-          fontSize = 15.sp,
-          lineHeight = 21.sp,
-      )
-      Spacer(Modifier.height(22.dp))
-      Text(
-          text =
-              if (hasScore) {
-                stringResource(R.string.your_score_value, sliderValue.roundToInt())
-              } else {
-                stringResource(R.string.score_none)
-              },
-          color = if (hasScore) PortalAniColors.Score else PortalAniColors.TextSecondary,
-          fontSize = 28.sp,
-          fontWeight = FontWeight.Bold,
-          modifier = Modifier.fillMaxWidth(),
-          textAlign = TextAlign.Center,
-      )
-      Spacer(Modifier.height(18.dp))
-      Slider(
-          value = sliderValue.coerceIn(0f, 10f),
-          onValueChange = {
-            sliderValue = it
-            hasScore = it > 0f
-          },
-          valueRange = 0f..10f,
-          steps = 9,
-          colors =
-              SliderDefaults.colors(
-                  thumbColor = PortalAniColors.Accent,
-                  activeTrackColor = PortalAniColors.Accent,
-                  inactiveTrackColor = PortalAniColors.SurfaceElevated,
-              ),
-      )
-      Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-        Text("0", color = PortalAniColors.TextMuted, fontSize = 14.sp)
-        Text("10", color = PortalAniColors.TextMuted, fontSize = 14.sp)
-      }
-      Spacer(Modifier.height(20.dp))
-      Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
-          verticalAlignment = Alignment.CenterVertically,
-      ) {
-        TextButton(onClick = onDismiss) {
-          Text(stringResource(R.string.close), color = PortalAniColors.TextSecondary)
-        }
-        TextButton(
-            onClick = {
-              hasScore = false
-              sliderValue = 0f
-            },
-        ) {
-          Text(stringResource(R.string.score_clear), color = PortalAniColors.TextSecondary)
-        }
-        PortalPrimaryButton(
-            text = stringResource(R.string.save),
-            onClick = { onSave(if (hasScore) sliderValue.roundToInt().toFloat() else null) },
+      PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
+      if (!subtitle.isNullOrBlank()) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = subtitle,
+            color = PortalAniColors.TextMuted,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
+      }
+      Spacer(Modifier.height(12.dp))
+      content()
+      if (footer != null) {
+        Spacer(Modifier.height(16.dp))
+        footer()
       }
     }
   }
 }
 
 @Composable
+private fun PortalDialogFooter(
+    primaryText: String,
+    onPrimary: () -> Unit,
+    secondaryText: String? = null,
+    onSecondary: (() -> Unit)? = null,
+) {
+  Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+      verticalAlignment = Alignment.CenterVertically,
+  ) {
+    if (secondaryText != null && onSecondary != null) {
+      PortalSecondaryButton(
+          text = secondaryText,
+          onClick = onSecondary,
+          modifier = Modifier.widthIn(min = 120.dp),
+      )
+    }
+    PortalPrimaryButton(
+        text = primaryText,
+        onClick = onPrimary,
+        modifier = Modifier.widthIn(min = 120.dp),
+    )
+  }
+}
+
+@Composable
+fun ScoreSliderDialog(
+    animeTitle: String,
+    initialScore: Float?,
+    onDismiss: () -> Unit,
+    onSave: (Float?) -> Unit,
+) {
+  var score by remember {
+    mutableStateOf(initialScore?.roundToInt()?.takeIf { it in 1..10 })
+  }
+
+  PortalFormDialog(
+      title = stringResource(R.string.score_dialog_title),
+      subtitle = animeTitle,
+      onDismiss = onDismiss,
+      width = PortalDialogWidths.Rating,
+      footer = {
+        PortalDialogFooter(
+            primaryText = stringResource(R.string.save),
+            onPrimary = { onSave(score?.toFloat()) },
+            secondaryText = stringResource(R.string.score_clear),
+            onSecondary = { score = null },
+        )
+      },
+  ) {
+    Text(
+        stringResource(R.string.score_slider_hint),
+        color = PortalAniColors.TextMuted,
+        fontSize = 14.sp,
+        lineHeight = 19.sp,
+    )
+    Spacer(Modifier.height(20.dp))
+    PortalStarRatingRow(
+        score = score,
+        onScoreSelected = { score = it },
+    )
+    Spacer(Modifier.height(14.dp))
+    Text(
+        text =
+            if (score != null) {
+              stringResource(R.string.score_out_of_ten, score!!)
+            } else {
+              stringResource(R.string.score_none)
+            },
+        color = if (score != null) PortalAniColors.Gold else PortalAniColors.TextSecondary,
+        fontSize = 20.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+    )
+  }
+}
+
+private const val STAR_RATING_COUNT = 10
+
+private fun scoreForPointerX(x: Float, widthPx: Float): Int? {
+  if (widthPx <= 0f) return null
+  val segment = widthPx / STAR_RATING_COUNT
+  if (segment <= 0f) return null
+  return ((x / segment).toInt().coerceIn(0, STAR_RATING_COUNT - 1)) + 1
+}
+
+@Composable
+private fun PortalStarRatingRow(
+    score: Int?,
+    onScoreSelected: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+    starSize: Dp = 44.dp,
+) {
+  val density = LocalDensity.current
+  val starSpacing = 6.dp
+  val touchHeight = starSize + 8.dp
+
+  BoxWithConstraints(
+      modifier = modifier.fillMaxWidth(),
+  ) {
+    val rowWidthPx = with(density) { maxWidth.toPx() }
+
+    fun applyPointerX(x: Float) {
+      onScoreSelected(scoreForPointerX(x, rowWidthPx))
+    }
+
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .height(touchHeight)
+                .pointerInput(rowWidthPx) {
+                  detectDragGestures(
+                      onDragStart = { offset -> applyPointerX(offset.x) },
+                      onDrag = { change, _ -> applyPointerX(change.position.x) },
+                  )
+                },
+        horizontalArrangement = Arrangement.spacedBy(starSpacing, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      for (starIndex in 1..STAR_RATING_COUNT) {
+        val filled = score != null && starIndex <= score
+        PortalStarRatingStar(filled = filled, size = starSize)
+      }
+    }
+  }
+}
+
+@Composable
+private fun PortalStarRatingStar(
+    filled: Boolean,
+    size: Dp,
+) {
+  val emptyTint = PortalAniColors.TextMuted.copy(alpha = 0.45f)
+  val gold = PortalAniColors.Gold
+  val iconSize = size * 0.68f
+
+  Box(
+      modifier = Modifier.size(size),
+      contentAlignment = Alignment.Center,
+  ) {
+    Icon(
+        imageVector = PortalIcons.ScoreStar,
+        contentDescription = null,
+        tint = emptyTint,
+        modifier = Modifier.size(iconSize),
+    )
+    if (filled) {
+      Icon(
+          imageVector = PortalIcons.ScoreStar,
+          contentDescription = null,
+          tint = gold,
+          modifier = Modifier.size(iconSize),
+      )
+    }
+  }
+}
+
+@Composable
 fun ListStatusDialog(
-    title: String,
+    animeTitle: String,
     currentStatus: ListStatus?,
     onDismiss: () -> Unit,
     onSelect: (ListStatus) -> Unit,
     onRemove: (() -> Unit)?,
 ) {
-  Dialog(
-      onDismissRequest = onDismiss,
-      properties = DialogProperties(usePlatformDefaultWidth = false),
+  val title =
+      if (currentStatus != null) {
+        stringResource(R.string.list_dialog_change_title)
+      } else {
+        stringResource(R.string.list_dialog_add_title)
+      }
+
+  PortalFormDialog(
+      title = title,
+      subtitle = animeTitle,
+      onDismiss = onDismiss,
+      width = PortalDialogWidths.Picker,
+      maxHeight = null,
   ) {
+    Text(
+        stringResource(R.string.list_status_dialog_hint),
+        color = PortalAniColors.TextMuted,
+        fontSize = 14.sp,
+        lineHeight = 19.sp,
+    )
+    Spacer(Modifier.height(14.dp))
     Column(
-        modifier =
-            Modifier.padding(horizontal = 48.dp)
-                .fillMaxWidth()
-                .widthIn(max = 560.dp)
-                .heightIn(max = 520.dp)
-                .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
-                .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
-                .padding(horizontal = 24.dp, vertical = 22.dp),
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
-      Spacer(Modifier.height(8.dp))
-      Text(stringResource(R.string.list_status_dialog_hint), color = PortalAniColors.TextMuted, fontSize = 15.sp)
-      Spacer(Modifier.height(16.dp))
-      LazyColumn(
-          modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        items(ListStatus.entries, key = { it.name }) { status ->
-          val selected = currentStatus == status
-          PortalPickerOptionRow(
-              label = listStatusLabel(status),
-              selected = selected,
-              onClick = { onSelect(status) },
-              leadingIcon = status.icon(),
-              iconTint = status.accentColor(),
-          )
-        }
+      ListStatus.entries.forEach { status ->
+        val selected = currentStatus == status
+        PortalPickerOptionRow(
+            label = listStatusLabel(status),
+            selected = selected,
+            onClick = { onSelect(status) },
+            leadingIcon = status.icon(),
+            iconTint = status.accentColor(),
+        )
       }
-      if (onRemove != null && currentStatus != null) {
-        Spacer(Modifier.height(12.dp))
-        TextButton(onClick = onRemove, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-          Text(stringResource(R.string.remove_from_list), color = PortalAniColors.TextMuted)
-        }
-      }
+    }
+    if (onRemove != null && currentStatus != null) {
+      Spacer(Modifier.height(12.dp))
+      PortalSettingsDivider()
+      PortalSettingsActionRow(
+          label = stringResource(R.string.remove_from_list),
+          onClick = onRemove,
+          labelColor = PortalAniColors.TextMuted,
+      )
     }
   }
 }

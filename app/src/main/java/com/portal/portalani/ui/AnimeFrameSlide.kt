@@ -248,14 +248,17 @@ private fun InformativeFrameContent(
   Row(
       modifier =
           Modifier.fillMaxSize()
-              .padding(top = 56.dp, bottom = 32.dp, start = 40.dp, end = 44.dp),
+              .padding(
+                  horizontal = FrameViewerInsets.horizontal,
+                  vertical = FrameViewerInsets.vertical,
+              ),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(36.dp),
   ) {
     val posterShape = PortalAniShapes.Poster
     Box(
         modifier =
-            Modifier.fillMaxHeight(0.94f)
+            Modifier.fillMaxHeight(0.98f)
                 .aspectRatio(2f / 3f)
                 .graphicsLayer {
                   val posterScale = 0.9f + (0.1f * enter)
@@ -331,9 +334,14 @@ private fun PosterModeFrameContent(
   val flipMirror = flipRotationY > 90f
 
   BoxWithConstraints(
-      modifier = Modifier.fillMaxSize().padding(top = 44.dp, bottom = 20.dp, start = 40.dp, end = 44.dp),
+      modifier =
+          Modifier.fillMaxSize()
+              .padding(
+                  horizontal = FrameViewerInsets.horizontal,
+                  vertical = FrameViewerInsets.vertical,
+              ),
   ) {
-    val collapsedHeightFraction = 0.98f
+    val collapsedHeightFraction = 1f
     val expandedHeightFraction = 0.94f
     val posterHeight =
         maxHeight * (collapsedHeightFraction + (expandedHeightFraction - collapsedHeightFraction) * expandProgress)

@@ -568,7 +568,7 @@ private fun SlideshowScreen(
     scoreDialogMediaId?.let { mediaId ->
       slides.firstOrNull { it.id == mediaId }?.let { slide ->
         ScoreSliderDialog(
-            title = stringResource(R.string.score_dialog_title, slide.title),
+            animeTitle = slide.title,
             initialScore = slide.userScore,
             onDismiss = {
               scoreDialogMediaId = null
@@ -586,7 +586,7 @@ private fun SlideshowScreen(
     listDialogMediaId?.let { mediaId ->
       slides.firstOrNull { it.id == mediaId }?.let { slide ->
         ListStatusDialog(
-            title = stringResource(R.string.list_dialog_title, slide.title),
+            animeTitle = slide.title,
             currentStatus = slide.listStatus,
             onDismiss = {
               listDialogMediaId = null

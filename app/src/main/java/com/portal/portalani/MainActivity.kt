@@ -112,6 +112,7 @@ class MainActivity : ComponentActivity() {
     super.onStop()
     // Re-assert after backgrounding so idle screensaver still launches Portal Ani.
     ScreensaverGuard.applyNow(this)
+    ScreensaverGuard.scheduleBackgroundReassert(this)
   }
 
   override fun onNewIntent(intent: Intent) {

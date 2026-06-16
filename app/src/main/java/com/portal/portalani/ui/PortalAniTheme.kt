@@ -52,10 +52,17 @@ object PortalAniColors {
   val Overlay = Color(0xCC05070C)
 }
 
+object FrameViewerInsets {
+  /** Slideshow is immersive (system bars hidden) — no extra top safe-zone inset. */
+  val horizontal = 32.dp
+  val vertical = 12.dp
+}
+
 object PortalDialogWidths {
   val Picker = 400.dp
   val SeasonPicker = 520.dp
   val Form = 440.dp
+  val Rating = 560.dp
 }
 
 object PortalAniShapes {
