@@ -7,7 +7,8 @@ import android.content.Intent
 class BootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent?) {
     if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
-    AnimeDreamService.setAsDefaultScreensaver(context)
+    ScreensaverGuard.applyNow(context)
     ScreensaverGuardWorker.schedule(context)
+    ScreensaverGuard.scheduleBootReassert(context)
   }
 }

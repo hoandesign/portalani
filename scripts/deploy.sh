@@ -82,7 +82,10 @@ adb shell pm grant "$PKG" android.permission.WRITE_SECURE_SETTINGS \
 
 echo ">> register screensaver"
 adb shell settings put secure screensaver_components "$DREAM"
+adb shell settings put secure screensaver_enabled 1
 adb shell settings put secure screensaver_activate_on_sleep 1
+CURRENT="$(adb shell settings get secure screensaver_components 2>/dev/null | tr -d '\r')"
+echo "   screensaver_components=$CURRENT"
 
 echo ">> launch"
 adb shell am start -n "$PKG/.MainActivity" >/dev/null

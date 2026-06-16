@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -338,6 +339,9 @@ private fun SlideshowScreen(
 
   val safeIndex = index.coerceIn(0, order.lastIndex)
   val interactionOpen = scoreDialogMediaId != null || listDialogMediaId != null || showSignInPrompt
+  val gesturesEnabled = !settingsOpen && !interactionOpen
+  val density = LocalDensity.current
+  val swipeThresholdPx = with(density) { 64.dp.toPx() }
 
   LaunchedEffect(safeIndex, order.size) {
     onSlideIndexChanged(safeIndex)
@@ -395,21 +399,38 @@ private fun SlideshowScreen(
   Box(
       modifier =
           Modifier.fillMaxSize()
-              .pointerInput(order.size, safeIndex) {
-                detectHorizontalDragGestures { _, drag ->
-                  onUserInteraction()
-                  if (drag < -45f) next()
-                  if (drag > 45f) previous()
-                }
-              }
-              .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                  onUserInteraction()
-                  if (offset.x < size.width * 0.2f) previous()
-                  else if (offset.x > size.width * 0.8f) next()
-                  else onToggleSettings()
-                }
-              },
+              .then(
+                  if (!gesturesEnabled) {
+                    Modifier
+                  } else {
+                    Modifier.pointerInput(order.size, swipeThresholdPx) {
+                          var totalDrag = 0f
+                          detectHorizontalDragGestures(
+                              onDragStart = { totalDrag = 0f },
+                              onHorizontalDrag = { _, amount ->
+                                totalDrag += amount
+                                onUserInteraction()
+                              },
+                              onDragEnd = {
+                                when {
+                                  totalDrag <= -swipeThresholdPx -> next()
+                                  totalDrag >= swipeThresholdPx -> previous()
+                                }
+                                totalDrag = 0f
+                              },
+                              onDragCancel = { totalDrag = 0f },
+                          )
+                        }
+                        .pointerInput(order.size) {
+                          detectTapGestures { offset ->
+                            onUserInteraction()
+                            if (offset.x < size.width * 0.2f) previous()
+                            else if (offset.x > size.width * 0.8f) next()
+                            else onToggleSettings()
+                          }
+                        }
+                  },
+              ),
   ) {
     AnimatedSlideHost(
         slideIndex = safeIndex,

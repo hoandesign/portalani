@@ -159,7 +159,7 @@ The script:
 1. Installs the APK with `adb install -r` (keeps app data / tokens)
 2. Grants `WRITE_SECURE_SETTINGS` (needed to register the screensaver)
 3. Sets `screensaver_components` to Portal Ani’s dream service
-4. Enables **activate screensaver on sleep**
+4. Enables the screensaver (`screensaver_enabled=1`) and **activate on sleep**
 5. Launches `MainActivity`
 
 ### Manual deploy (alternative)
@@ -169,6 +169,7 @@ adb -s SERIAL install -r app/build/outputs/apk/debug/app-debug.apk
 adb -s SERIAL shell pm grant com.portal.portalani android.permission.WRITE_SECURE_SETTINGS
 adb -s SERIAL shell settings put secure screensaver_components \
   com.portal.portalani/com.portal.portalani.AnimeDreamService
+adb -s SERIAL shell settings put secure screensaver_enabled 1
 adb -s SERIAL shell settings put secure screensaver_activate_on_sleep 1
 adb -s SERIAL shell am start -n com.portal.portalani/.MainActivity
 ```
@@ -187,10 +188,25 @@ After a successful deploy:
 1. Put the Portal to **sleep** (or wait for idle timeout).
 2. Portal Ani should start as the dream/screensaver.
 
+Verify registration:
+
+```bash
+adb shell settings get secure screensaver_components
+adb shell settings get secure screensaver_enabled
+```
+
+Expected:
+
+- `screensaver_components=com.portal.portalani/com.portal.portalani.AnimeDreamService`
+- `screensaver_enabled=1`
+
 If it does not:
 
 - Re-run `scripts/deploy.sh` to re-grant permissions and re-register the dream component.
-- Confirm the app opens manually from the launcher first.
+- Open Portal Ani once from the launcher (the app re-asserts the screensaver on resume).
+- **Another screensaver app installed?** Portal only runs one dream at a time. If you also have [portal-gphotos](https://github.com/ram-nat/portal-gphotos) or similar, whichever app last re-registered wins. Open Portal Ani after the other app, or redeploy Portal Ani, to switch back.
+- Portal’s launcher resets the screensaver on boot; Portal Ani re-applies it via boot receiver + a 15-minute background guard (same approach as portal-gphotos).
+- **Quiet hours** (Settings → Power → Off when sleeping): during the sleep window the screensaver stays off by design.
 
 ---
 

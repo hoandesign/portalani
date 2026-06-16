@@ -18,6 +18,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.portal.portalani.BuildConfig
 import com.portal.portalani.data.PowerPolicy
+import com.portal.portalani.ScreensaverGuard
 import com.portal.portalani.ui.PortalAniApp
 import com.portal.portalani.ui.PortalAniTheme
 import com.portal.portalani.ui.PowerScreenEffect
@@ -95,6 +96,17 @@ class MainActivity : ComponentActivity() {
     }
 
     handleIntent(intent)
+  }
+
+  override fun onResume() {
+    super.onResume()
+    ScreensaverGuard.applyNow(this)
+  }
+
+  override fun onStop() {
+    super.onStop()
+    // Re-assert after backgrounding so idle screensaver still launches Portal Ani.
+    ScreensaverGuard.applyNow(this)
   }
 
   override fun onNewIntent(intent: Intent) {

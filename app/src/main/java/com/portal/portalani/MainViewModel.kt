@@ -90,13 +90,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   init {
     ScreensaverGuardWorker.schedule(app)
-    AnimeDreamService.setAsDefaultScreensaver(app)
+    ScreensaverGuard.applyNow(app)
     refresh()
   }
 
-  fun refresh() {
+  fun refresh(forceReload: Boolean = false) {
     viewModelScope.launch {
-      loadSlides(showLoading = _state.value !is UiState.Showing)
+      loadSlides(showLoading = forceReload || _state.value !is UiState.Showing)
     }
   }
 
@@ -169,17 +169,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     if (_settings.value.sourceMode == SourceMode.PERSONAL) {
       updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
     }
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun useLibrary() {
     updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun setSourceMode(mode: SourceMode) {
     updateSettings(_settings.value.copy(sourceMode = mode))
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun setShuffle(enabled: Boolean) {
@@ -192,26 +192,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setListStatus(status: ListStatus) {
     updateSettings(_settings.value.copy(listStatus = status))
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun setFormatFilter(filter: FormatFilter) {
     updateSettings(_settings.value.copy(formatFilter = filter))
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun setLibrarySort(sort: LibrarySort) {
     updateSettings(_settings.value.copy(librarySort = sort))
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun setSeasonKey(key: String) {
     updateSettings(_settings.value.copy(seasonKey = key))
-    refresh()
+    refresh(forceReload = true)
   }
 
   fun setPowerMode(mode: PowerMode) {
     updateSettings(_settings.value.copy(powerMode = mode))
+    ScreensaverGuard.applyPowerPolicy(getApplication(), _settings.value)
   }
 
   fun setIdleSleepMinutes(minutes: Int) {
@@ -222,10 +223,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setSleepStartMinutes(minutes: Int) {
     updateSettings(_settings.value.copy(sleepStartMinutes = minutes.coerceIn(0, 24 * 60 - 1)))
+    ScreensaverGuard.applyPowerPolicy(getApplication(), _settings.value)
   }
 
   fun setSleepEndMinutes(minutes: Int) {
     updateSettings(_settings.value.copy(sleepEndMinutes = minutes.coerceIn(0, 24 * 60 - 1)))
+    ScreensaverGuard.applyPowerPolicy(getApplication(), _settings.value)
   }
 
   fun onSlideIndexChanged(index: Int) {
@@ -340,6 +343,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val settings = _settings.value
     val token = tokens.accessToken()
     val cacheKey = settings.cacheKey()
+    val previousFeedKey = activeFeedKey
+    val feedKeyChanged = previousFeedKey != null && previousFeedKey != cacheKey
 
     resetFeedPagination(cacheKey)
 
@@ -348,10 +353,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val cachedStale =
         cachedFresh ?: withContext(Dispatchers.IO) { slideCache.loadStale(cacheKey) }
 
-    if (showLoading && cachedFresh == null) {
-      _state.value = UiState.Loading
-    } else if (cachedFresh != null) {
-      _state.value = showingState(cachedFresh, fromCache = true)
+    when {
+      feedKeyChanged && cachedFresh == null -> _state.value = UiState.Loading
+      showLoading && cachedFresh == null -> _state.value = UiState.Loading
+      cachedFresh != null -> _state.value = showingState(cachedFresh, fromCache = true)
     }
 
     try {
