@@ -241,6 +241,7 @@ If it does not:
 | Seconds per slide | Auto-advance interval (5–120 s) |
 | Lists | Which AniList lists to show (Personal mode); select multiple |
 | Format / Sort / Season | Catalog filters (Full library mode) |
+| Hide Hentai genre | Hides anime tagged Hentai on AniList from slideshow and calendar (default on) |
 | Show clock | Time and date overlay in poster mode (bottom-left) |
 | Show weather | Current temp and icon beside the date; uses [Open-Meteo](https://open-meteo.com/), no API key |
 | Temperature | Celsius or Fahrenheit |
@@ -255,9 +256,21 @@ If it does not:
 2. Set **Source**, **Format**, and **Sort** under **What to show** (same as slideshow).
 3. For **Personal**, pick which lists count toward your schedule.
 4. Optionally set **Week starts on** to Sunday.
-5. Swipe left/right (or tap screen edges) to browse other weeks.
+5. Swipe left/right (or tap screen edges) to browse other weeks; tap **Today** to return to the current week.
+6. **Tap** a poster to open detail (poster + synopsis + actions, same layout as informative mode). **Long-press** anywhere on the grid, a day header, or the month title to open settings.
 
 Sign-in is required for **Personal** calendar; **Full library** works without signing in.
+
+**Calendar gestures**
+
+| Action | How |
+|--------|-----|
+| Next week | Swipe left or tap right edge |
+| Previous week | Tap left edge or swipe right |
+| Settings | Long-press center, month header, day header, or any poster |
+| Episode detail | Tap poster |
+| Back from detail | Tap poster again, or device back |
+| Scroll busy days | Swipe up/down on the week grid |
 
 ### Clock & weather setup
 
@@ -290,6 +303,8 @@ When signed in and an anime is on your list, a colored status badge appears abov
 | Offline | Last feed is cached; “Showing saved feed” badge appears |
 | Weather not showing | Enable clock + weather in settings; set a location; check network on Portal |
 | Location denied | Use city search instead of **Use my location**, or grant permission in Portal system settings |
+| Calendar empty week | Widen filters (format/sort), turn off **Hide Hentai** if needed, or try another week |
+| Calendar settings won’t open | Long-press a poster or day header (not just the screen edge) |
 
 ---
 

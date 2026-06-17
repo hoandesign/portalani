@@ -49,11 +49,14 @@ data class LibraryFilters(
     val format: FormatFilter = FormatFilter.ALL,
     val sort: LibrarySort = LibrarySort.POPULARITY,
     val seasonKey: String = SeasonSelection.ANY_KEY,
+    val hideHentai: Boolean = true,
 ) {
   fun resolvedSeason(): LibrarySeasonParams = SeasonSelection.resolve(seasonKey)
 
   /** Client-side guard when API returns entries with missing or mismatched year metadata. */
-  fun matchesSlide(slide: AnimeSlide): Boolean {
+  fun matchesSlide(slide: AnimeSlide, applySeasonFilter: Boolean = true): Boolean {
+    if (hideHentai && slide.genres.containsHentaiGenre()) return false
+    if (!applySeasonFilter) return true
     val params = resolvedSeason()
     val targetYear = params.seasonYear ?: return true
     val slideYear = slide.airingYear() ?: return false
@@ -63,6 +66,10 @@ data class LibraryFilters(
     return slideSeason.equals(targetSeason, ignoreCase = true)
   }
 }
+
+const val HENTAI_GENRE = "Hentai"
+
+fun List<String>.containsHentaiGenre(): Boolean = any { it.equals(HENTAI_GENRE, ignoreCase = true) }
 
 enum class SeasonPickerSeason {
   ANY,

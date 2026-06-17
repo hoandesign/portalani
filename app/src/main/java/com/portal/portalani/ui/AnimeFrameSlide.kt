@@ -55,7 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -66,22 +65,6 @@ import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.MediaRanking
 import com.portal.portalani.data.RankScope
 import com.portal.portalani.data.RankType
-
-private fun AnimeSlide.bannerImageRequest(context: android.content.Context) =
-    ImageRequest.Builder(context)
-        .data(bannerUrl)
-        .crossfade(true)
-        .memoryCacheKey("banner-$id")
-        .diskCacheKey("banner-$id")
-        .build()
-
-private fun AnimeSlide.coverImageRequest(context: android.content.Context) =
-    ImageRequest.Builder(context)
-        .data(coverUrl)
-        .crossfade(true)
-        .memoryCacheKey("cover-$id")
-        .diskCacheKey("cover-$id")
-        .build()
 
 @Composable
 fun AnimeFrameSlide(
@@ -168,7 +151,7 @@ fun AnimeFrameSlide(
 }
 
 @Composable
-private fun SlideParallaxBackground(
+internal fun SlideParallaxBackground(
     slide: AnimeSlide,
     context: android.content.Context,
     enter: Float,
@@ -240,18 +223,15 @@ private fun InformativeFrameContent(
   Row(
       modifier =
           Modifier.fillMaxSize()
-              .padding(
-                  horizontal = FrameViewerInsets.horizontal,
-                  vertical = FrameViewerInsets.vertical,
-              ),
+              .padding(FrameViewerInsets.detailContentPadding),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(36.dp),
+      horizontalArrangement = Arrangement.spacedBy(FrameViewerInsets.posterInfoGap),
   ) {
     val posterShape = PortalAniShapes.Poster
     Box(
         modifier =
             Modifier.fillMaxHeight(0.98f)
-                .aspectRatio(2f / 3f)
+                .aspectRatio(PosterLayout.AspectRatio)
                 .graphicsLayer {
                   val posterScale = 0.9f + (0.1f * enter)
                   scaleX = posterScale
@@ -324,23 +304,13 @@ private fun PosterModeFrameContent(
   BoxWithConstraints(
       modifier =
           Modifier.fillMaxSize()
-              .padding(
-                  horizontal = FrameViewerInsets.horizontal,
-                  vertical = FrameViewerInsets.vertical,
-              ),
+              .padding(FrameViewerInsets.detailContentPadding),
   ) {
-    val collapsedPosterHeight =
-        run {
-          val heightIfWidthFits = maxWidth * (3f / 2f)
-          val height = min(maxHeight, heightIfWidthFits)
-          val width = height * (2f / 3f)
-          if (width <= maxWidth) height else maxWidth * (3f / 2f)
-        }
-    val expandedHeightFraction = 0.94f
+    val collapsedPoster = PosterLayout.fitIn(maxWidth = maxWidth, maxHeight = maxHeight)
     val posterHeight =
-        collapsedPosterHeight *
-            (1f + (expandedHeightFraction - 1f) * expandProgress)
-    val posterWidth = posterHeight * (2f / 3f)
+        collapsedPoster.height *
+            (1f + (FrameViewerInsets.expandedPosterHeightFraction - 1f) * expandProgress)
+    val posterWidth = PosterLayout.widthForHeight(posterHeight)
     val centerToStartShift = (maxWidth - posterWidth) / 2f
     val posterOffsetX = lerp(0.dp, -centerToStartShift, expandProgress)
     val driftScale = 1f - expandProgress * 0.65f
@@ -461,7 +431,7 @@ private fun PosterModeFrameContent(
           slide = slide,
           modifier =
               Modifier.align(Alignment.CenterEnd)
-                  .width((maxWidth - posterWidth - 36.dp).coerceAtLeast(280.dp))
+                  .width((maxWidth - posterWidth - FrameViewerInsets.posterInfoGap).coerceAtLeast(280.dp))
                   .fillMaxHeight()
                   .graphicsLayer {
                     alpha = infoEnter
@@ -480,7 +450,7 @@ private fun PosterModeFrameContent(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AnimeInfoPanel(
+internal fun AnimeInfoPanel(
     slide: AnimeSlide,
     modifier: Modifier = Modifier,
     onPlayTrailer: (() -> Unit)? = null,

@@ -18,6 +18,7 @@ import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.CalendarAiringEntry
 import com.portal.portalani.data.CalendarWeek
+import com.portal.portalani.data.CalendarWeekCache
 import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.FrameMode
@@ -73,6 +74,7 @@ sealed interface UiState {
 data class CalendarWeekState(
     val weekStart: LocalDate,
     val entries: List<CalendarAiringEntry>,
+    val isCurrentWeek: Boolean = false,
     val fromCache: Boolean = false,
 )
 
@@ -86,6 +88,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val tokens = TokenStore(app)
   private val settingsStore = SettingsStore(app)
   private val slideCache = AnimeSlideCache(app)
+  private val calendarWeekCache = CalendarWeekCache(app)
   private val auth = AniListAuth(http, tokens)
   private val client = AniListClient(http)
   private val weatherClient = WeatherClient(http)
@@ -123,7 +126,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val _calendarLoading = MutableStateFlow(false)
   val calendarLoading: StateFlow<Boolean> = _calendarLoading.asStateFlow()
 
+  private val _calendarDetailSlide = MutableStateFlow<AnimeSlide?>(null)
+  val calendarDetailSlide: StateFlow<AnimeSlide?> = _calendarDetailSlide.asStateFlow()
+
+  private val _calendarDetailLoading = MutableStateFlow(false)
+  val calendarDetailLoading: StateFlow<Boolean> = _calendarDetailLoading.asStateFlow()
+
   private var calendarWeekOffset = 0
+  private val calendarMemoryCache = object : LinkedHashMap<String, CalendarWeekState>(16, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CalendarWeekState>?): Boolean = size > 16
+  }
 
   private var pendingOAuthState: String? = null
 
@@ -144,8 +156,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   fun refresh(forceReload: Boolean = false) {
     viewModelScope.launch {
       if (_settings.value.frameMode == FrameMode.CALENDAR) {
-        if (forceReload) calendarWeekOffset = 0
-        loadCalendarWeek(showLoading = forceReload || _calendarState.value == null)
+        if (forceReload) {
+          calendarWeekOffset = 0
+          clearCalendarMemoryCache()
+        }
+        if (_calendarState.value == null || forceReload) {
+          navigateToCalendarWeek()
+        } else {
+          loadCalendarWeek()
+        }
       } else {
         loadSlides(showLoading = forceReload || _state.value !is UiState.Showing)
       }
@@ -154,14 +173,96 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun shiftCalendarWeek(delta: Int) {
     calendarWeekOffset += delta
-    viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+    navigateToCalendarWeek()
+  }
+
+  fun goToCalendarToday() {
+    if (calendarWeekOffset == 0) return
+    calendarWeekOffset = 0
+    navigateToCalendarWeek()
+  }
+
+  fun openCalendarEntry(entry: CalendarAiringEntry) {
+    viewModelScope.launch {
+      _calendarDetailLoading.value = true
+      try {
+        val slide =
+            withContext(Dispatchers.IO) {
+              client.fetchMediaById(entry.mediaId, tokens.accessToken())
+            }
+        if (slide != null) {
+          _calendarDetailSlide.value = slide
+        } else {
+          _userMessage.value = "Could not load anime details."
+        }
+      } catch (e: Exception) {
+        _userMessage.value = e.message ?: "Could not load anime details."
+      } finally {
+        _calendarDetailLoading.value = false
+      }
+    }
+  }
+
+  fun closeCalendarDetail() {
+    _calendarDetailSlide.value = null
+    _calendarDetailLoading.value = false
+  }
+
+  private fun calendarWeekStart(settings: AppSettings = _settings.value): LocalDate {
+    val zone = ZoneId.systemDefault()
+    val today = LocalDate.now(zone)
+    val anchor = CalendarWeek.startOfWeek(today, settings.weekStart)
+    return anchor.plusWeeks(calendarWeekOffset.toLong())
+  }
+
+  private fun navigateToCalendarWeek() {
+    val settings = _settings.value
+    val weekStart = calendarWeekStart(settings)
+    val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
+    val memCached = calendarMemoryCache[cacheKey]
+    if (memCached != null) {
+      _calendarState.value = memCached
+      _calendarLoading.value = false
+      viewModelScope.launch { loadCalendarWeek(weekStart = weekStart, allowStaleOverlay = false) }
+      return
+    }
+
+    val diskCached = calendarWeekCache.load(cacheKey) ?: calendarWeekCache.loadStale(cacheKey)
+    if (diskCached != null && diskCached.weekStart == weekStart) {
+      val fromDisk =
+          CalendarWeekState(
+              weekStart = weekStart,
+              entries = diskCached.entries,
+              isCurrentWeek = calendarWeekOffset == 0,
+              fromCache = true,
+          )
+      calendarMemoryCache[cacheKey] = fromDisk
+      _calendarState.value = fromDisk
+      _calendarLoading.value = false
+      viewModelScope.launch { loadCalendarWeek(weekStart = weekStart, allowStaleOverlay = false) }
+      return
+    }
+
+    _calendarState.value =
+        CalendarWeekState(
+            weekStart = weekStart,
+            entries = emptyList(),
+            isCurrentWeek = calendarWeekOffset == 0,
+        )
+    _calendarLoading.value = true
+    viewModelScope.launch { loadCalendarWeek(weekStart = weekStart, allowStaleOverlay = true) }
+  }
+
+  private fun clearCalendarMemoryCache() {
+    calendarMemoryCache.clear()
   }
 
   fun setWeekStart(weekStart: WeekStart) {
     updateSettings(_settings.value.copy(weekStart = weekStart))
     if (_settings.value.frameMode == FrameMode.CALENDAR) {
       calendarWeekOffset = 0
-      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
     }
   }
 
@@ -247,7 +348,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     updateSettings(_settings.value.copy(sourceMode = mode))
     if (calendar) {
       calendarWeekOffset = 0
-      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -273,7 +375,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     updateSettings(_settings.value.copy(frameMode = mode))
     if (mode == FrameMode.CALENDAR) {
       calendarWeekOffset = 0
-      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
     } else if (leavingCalendar) {
       refresh(forceReload = true)
     }
@@ -476,7 +579,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(listStatuses = statuses))
     if (calendar) {
-      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -486,7 +590,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(formatFilter = filter))
     if (calendar) {
-      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
+    } else {
+      refresh(forceReload = true)
+    }
+  }
+
+  fun setHideHentai(enabled: Boolean) {
+    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
+    updateSettings(_settings.value.copy(hideHentai = enabled))
+    if (calendar) {
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -496,7 +612,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(librarySort = sort))
     if (calendar) {
-      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+      clearCalendarMemoryCache()
+      navigateToCalendarWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -632,9 +749,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   private fun filterSlidesForSettings(slides: List<AnimeSlide>, settings: AppSettings): List<AnimeSlide> {
-    if (settings.sourceMode != SourceMode.LIBRARY) return slides
     val filters = settings.libraryFilters()
-    return slides.filter { filters.matchesSlide(it) }
+    val applySeasonFilter = settings.sourceMode == SourceMode.LIBRARY
+    return slides.filter { filters.matchesSlide(it, applySeasonFilter = applySeasonFilter) }
   }
 
   private fun updateSettings(next: AppSettings) {
@@ -642,7 +759,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     _settings.value = next
   }
 
-  private suspend fun loadCalendarWeek(showLoading: Boolean) {
+  private suspend fun loadCalendarWeek(
+      showLoading: Boolean = false,
+      weekStart: LocalDate = calendarWeekStart(),
+      allowStaleOverlay: Boolean = showLoading,
+  ) {
     val settings = _settings.value
     val token = tokens.accessToken()
 
@@ -658,14 +779,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     val zone = ZoneId.systemDefault()
-    val today = LocalDate.now(zone)
-    val anchor = CalendarWeek.startOfWeek(today, settings.weekStart)
-    val weekStart = anchor.plusWeeks(calendarWeekOffset.toLong())
     val weekEnd = weekStart.plusDays(6)
     val airingAtGreater = weekStart.atStartOfDay(zone).toEpochSecond().toInt()
     val airingAtLesser = weekEnd.atTime(23, 59, 59).atZone(zone).toEpochSecond().toInt()
 
-    if (showLoading) _calendarLoading.value = true
+    val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
+    val hasVisibleData = calendarMemoryCache[cacheKey]?.entries?.isNotEmpty() == true
+    val showLoadingOverlay = allowStaleOverlay && !hasVisibleData && calendarWeekStart(settings) == weekStart
+    if (showLoadingOverlay) {
+      _calendarLoading.value = true
+    }
 
     try {
       val raw =
@@ -681,6 +804,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
               .asSequence()
               .filter { CalendarWeek.matchesSeasonWindow(it.season, it.seasonYear) }
               .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
+              .filter { CalendarWeek.matchesHideHentai(it, settings.hideHentai) }
               .filter { entry ->
                 if (settings.sourceMode != SourceMode.PERSONAL) {
                   true
@@ -690,15 +814,108 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
               }
               .toList()
       val sorted = CalendarWeek.sortEntries(filtered, settings.librarySort)
-      _calendarState.value = CalendarWeekState(weekStart = weekStart, entries = sorted)
+      val loaded =
+          CalendarWeekState(
+              weekStart = weekStart,
+              entries = sorted,
+              isCurrentWeek = calendarWeekOffset == 0,
+          )
+      calendarMemoryCache[cacheKey] = loaded
+      calendarWeekCache.save(cacheKey, weekStart, sorted)
+      if (calendarWeekStart(settings) == weekStart) {
+        _calendarState.value = loaded
+      }
       _state.value = UiState.Showing(slides = emptyList(), fromCache = false)
+      prefetchAdjacentCalendarWeeks(settings, weekStart)
     } catch (e: Exception) {
       if (_calendarState.value == null) {
         _state.value = UiState.Error(e.message ?: "Could not load airing schedule", canOpenSettings = true)
+      } else if (!hasVisibleData) {
+        val stale = calendarWeekCache.loadStale(cacheKey)
+        if (stale != null && stale.weekStart == weekStart) {
+          val fallback =
+              CalendarWeekState(
+                  weekStart = weekStart,
+                  entries = stale.entries,
+                  isCurrentWeek = calendarWeekOffset == 0,
+                  fromCache = true,
+              )
+          calendarMemoryCache[cacheKey] = fallback
+          if (calendarWeekStart(settings) == weekStart) {
+            _calendarState.value = fallback
+          }
+        }
       }
     } finally {
-      _calendarLoading.value = false
+      if (calendarWeekStart(settings) == weekStart) {
+        _calendarLoading.value = false
+      }
     }
+  }
+
+  private fun prefetchAdjacentCalendarWeeks(settings: AppSettings, weekStart: LocalDate) {
+    viewModelScope.launch {
+      for (delta in listOf(-1L, 1L)) {
+        val adjacent = weekStart.plusWeeks(delta)
+        val key = settings.calendarCacheKey(adjacent.toEpochDay())
+        if (calendarMemoryCache.containsKey(key)) continue
+        val diskCached = calendarWeekCache.load(key) ?: calendarWeekCache.loadStale(key)
+        if (diskCached != null && diskCached.weekStart == adjacent) {
+          calendarMemoryCache[key] =
+              CalendarWeekState(
+                  weekStart = adjacent,
+                  entries = diskCached.entries,
+                  isCurrentWeek = calendarWeekOffset == 0 && adjacent == calendarWeekStart(settings),
+                  fromCache = true,
+              )
+          continue
+        }
+        runCatching { fetchAndStoreCalendarWeek(settings, adjacent) }
+      }
+    }
+  }
+
+  private suspend fun fetchAndStoreCalendarWeek(settings: AppSettings, weekStart: LocalDate) {
+    val token = tokens.accessToken()
+    if (settings.sourceMode == SourceMode.PERSONAL && token == null) return
+
+    val zone = ZoneId.systemDefault()
+    val weekEnd = weekStart.plusDays(6)
+    val airingAtGreater = weekStart.atStartOfDay(zone).toEpochSecond().toInt()
+    val airingAtLesser = weekEnd.atTime(23, 59, 59).atZone(zone).toEpochSecond().toInt()
+    val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
+
+    val raw =
+        withContext(Dispatchers.IO) {
+          client.fetchAiringSchedules(
+              airingAtGreater = airingAtGreater,
+              airingAtLesser = airingAtLesser,
+              accessToken = token,
+          )
+        }
+    val filtered =
+        raw
+            .asSequence()
+            .filter { CalendarWeek.matchesSeasonWindow(it.season, it.seasonYear) }
+            .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
+            .filter { CalendarWeek.matchesHideHentai(it, settings.hideHentai) }
+            .filter { entry ->
+              if (settings.sourceMode != SourceMode.PERSONAL) {
+                true
+              } else {
+                entry.isOnList && entry.listStatus in settings.listStatuses
+              }
+            }
+            .toList()
+    val sorted = CalendarWeek.sortEntries(filtered, settings.librarySort)
+    val loaded =
+        CalendarWeekState(
+            weekStart = weekStart,
+            entries = sorted,
+            isCurrentWeek = calendarWeekStart(settings) == weekStart,
+        )
+    calendarMemoryCache[cacheKey] = loaded
+    calendarWeekCache.save(cacheKey, weekStart, sorted)
   }
 
   private suspend fun loadSlides(showLoading: Boolean) {
@@ -752,7 +969,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                   )
             }
           }
-      val slides = batch?.slides.orEmpty()
+      val slides = batch?.slides.orEmpty().let { filterSlidesForSettings(it, settings) }
       if (slides.isEmpty()) {
         if (cachedStale != null) {
           _state.value = showingState(cachedStale, fromCache = true)

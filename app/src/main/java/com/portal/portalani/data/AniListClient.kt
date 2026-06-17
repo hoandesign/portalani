@@ -45,6 +45,9 @@ class AniListClient(private val http: OkHttpClient) {
             .put("perPage", perPage)
             .put("sort", JSONArray().put(filters.sort.apiSort))
     filters.format.apiValue?.let { variables.put("format", JSONArray().put(it)) }
+    if (filters.hideHentai) {
+      variables.put("genre_not_in", JSONArray().put(HENTAI_GENRE))
+    }
     season.season?.let { variables.put("season", it) }
     if (season.season != null) {
       season.seasonYear?.let { variables.put("seasonYear", it) }
@@ -80,6 +83,15 @@ class AniListClient(private val http: OkHttpClient) {
           page = page,
           perPage = perPage,
       )
+
+  @Throws(IOException::class)
+  fun fetchMediaById(id: Int, accessToken: String? = null): AnimeSlide? {
+    val variables = JSONObject().put("id", id)
+    val query = if (accessToken != null) MEDIA_BY_ID_AUTH_QUERY else MEDIA_BY_ID_QUERY
+    val data = postGraphQl(query, variables, accessToken)
+    val media = data.optJSONObject("Media") ?: return null
+    return parseMedia(media)
+  }
 
   @Throws(IOException::class)
   fun fetchAiringSchedules(
@@ -124,10 +136,16 @@ class AniListClient(private val http: OkHttpClient) {
     val english = titleObj?.optString("english").orEmpty().takeIf { it.isNotBlank() && it != "null" }
     val romaji = titleObj?.optString("romaji").orEmpty().takeIf { it.isNotBlank() && it != "null" }
     val entry = media.optJSONObject("mediaListEntry")
+    val genres = mutableListOf<String>()
+    media.optJSONArray("genres")?.let { arr ->
+      for (i in 0 until arr.length()) {
+        arr.optString(i).takeIf { it.isNotBlank() }?.let { genres += it }
+      }
+    }
     return CalendarAiringEntry(
         scheduleId = node.getInt("id"),
         mediaId = media.getInt("id"),
-        title = english ?: romaji ?: "Anime",
+        englishTitle = english ?: romaji ?: "Anime",
         coverUrl = cover,
         episode = node.optInt("episode").takeIf { it > 0 } ?: return null,
         airingAt = node.optInt("airingAt").takeIf { it > 0 } ?: return null,
@@ -137,6 +155,7 @@ class AniListClient(private val http: OkHttpClient) {
         averageScore = media.optInt("averageScore").takeIf { it > 0 },
         popularity = media.optInt("popularity").takeIf { it > 0 },
         listStatus = entry?.optString("status").toListStatusOrNull(),
+        genres = genres,
     )
   }
 
@@ -484,6 +503,27 @@ class AniListClient(private val http: OkHttpClient) {
         }
         """
 
+    private val MEDIA_BY_ID_QUERY =
+        """
+        query (${'$'}id: Int) {
+          Media(id: ${'$'}id, type: ANIME) {
+            $MEDIA_FIELDS
+          }
+        }
+        """
+            .trimIndent()
+
+    private val MEDIA_BY_ID_AUTH_QUERY =
+        """
+        query (${'$'}id: Int) {
+          Media(id: ${'$'}id, type: ANIME) {
+            $MEDIA_FIELDS
+            $MEDIA_USER_FIELDS
+          }
+        }
+        """
+            .trimIndent()
+
     private val VIEWER_QUERY =
         """
         query {
@@ -505,6 +545,7 @@ class AniListClient(private val http: OkHttpClient) {
           ${'$'}seasonYear: Int,
           ${'$'}startDate_greater: FuzzyDateInt,
           ${'$'}startDate_lesser: FuzzyDateInt,
+          ${'$'}genre_not_in: [String],
           ${'$'}sort: [MediaSort]
         ) {
           Page(page: ${'$'}page, perPage: ${'$'}perPage) {
@@ -516,6 +557,7 @@ class AniListClient(private val http: OkHttpClient) {
               seasonYear: ${'$'}seasonYear
               startDate_greater: ${'$'}startDate_greater
               startDate_lesser: ${'$'}startDate_lesser
+              genre_not_in: ${'$'}genre_not_in
               sort: ${'$'}sort
             ) {
               $MEDIA_FIELDS
@@ -535,6 +577,7 @@ class AniListClient(private val http: OkHttpClient) {
           ${'$'}seasonYear: Int,
           ${'$'}startDate_greater: FuzzyDateInt,
           ${'$'}startDate_lesser: FuzzyDateInt,
+          ${'$'}genre_not_in: [String],
           ${'$'}sort: [MediaSort]
         ) {
           Page(page: ${'$'}page, perPage: ${'$'}perPage) {
@@ -546,6 +589,7 @@ class AniListClient(private val http: OkHttpClient) {
               seasonYear: ${'$'}seasonYear
               startDate_greater: ${'$'}startDate_greater
               startDate_lesser: ${'$'}startDate_lesser
+              genre_not_in: ${'$'}genre_not_in
               sort: ${'$'}sort
             ) {
               $MEDIA_FIELDS
@@ -594,6 +638,7 @@ class AniListClient(private val http: OkHttpClient) {
         seasonYear
         averageScore
         popularity
+        genres
         """
 
     private val AIRING_SCHEDULE_QUERY =

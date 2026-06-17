@@ -24,7 +24,8 @@ enum class WeekStart {
 data class CalendarAiringEntry(
     val scheduleId: Int,
     val mediaId: Int,
-    val title: String,
+    /** English title when AniList provides one; otherwise romaji/native fallback. */
+    val englishTitle: String,
     val coverUrl: String,
     val episode: Int,
     /** Unix timestamp (seconds) when the episode airs. */
@@ -35,6 +36,7 @@ data class CalendarAiringEntry(
     val averageScore: Int?,
     val popularity: Int?,
     val listStatus: ListStatus?,
+    val genres: List<String> = emptyList(),
 ) {
   val isOnList: Boolean
     get() = listStatus != null
@@ -46,7 +48,45 @@ data class CalendarAiringEntry(
     val time = Instant.ofEpochSecond(airingAt.toLong()).atZone(zone).toLocalTime()
     return time.format(DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT).withLocale(locale))
   }
+
+  /** Splits [localTimeLabel] into clock text and an optional AM/PM-style period suffix. */
+  fun localTimeParts(zone: ZoneId = ZoneId.systemDefault(), locale: Locale = Locale.getDefault()): Pair<String, String?> {
+    val label = localTimeLabel(zone = zone, locale = locale)
+    val match = LOCAL_TIME_PERIOD_REGEX.matchEntire(label.trim()) ?: return label to null
+    val period = match.groupValues[2]
+    if (!period.any { it.isLetter() }) return label to null
+    return match.groupValues[1].trim() to period
+  }
+
+  private companion object {
+    val LOCAL_TIME_PERIOD_REGEX = Regex("""^(.+?)\s+(\S+)$""")
+  }
 }
+
+/** Minimal slide for calendar detail open animation while full media loads. */
+fun CalendarAiringEntry.toPlaceholderSlide(): AnimeSlide =
+    AnimeSlide(
+        id = mediaId,
+        title = englishTitle,
+        nativeTitle = null,
+        coverUrl = coverUrl,
+        bannerUrl = coverUrl,
+        averageScore = averageScore,
+        episodes = null,
+        status = "RELEASING",
+        season = season,
+        seasonYear = seasonYear,
+        startDateYear = seasonYear,
+        format = format,
+        studio = null,
+        genres = genres,
+        description = null,
+        siteUrl = "https://anilist.co/anime/$mediaId",
+        trailerYoutubeId = null,
+        listStatus = listStatus,
+        nextAiringEpisode = episode,
+        nextAiringAt = airingAt,
+    )
 
 object CalendarWeek {
   private const val SEASON_WINDOW_COUNT = 4
@@ -68,16 +108,11 @@ object CalendarWeek {
   private fun ChronoDaysBetween(start: LocalDate, end: LocalDate): Long =
       java.time.temporal.ChronoUnit.DAYS.between(start, end)
 
+  fun mondayInWeek(weekStart: LocalDate): LocalDate = weekDates(weekStart).first { it.dayOfWeek == DayOfWeek.MONDAY }
+
   fun headerLabel(weekStart: LocalDate, locale: Locale = Locale.getDefault()): String {
-    val weekEnd = weekStart.plusDays(6)
-    val monthStyle = TextStyle.FULL
-    return if (weekStart.month == weekEnd.month && weekStart.year == weekEnd.year) {
-      "${weekStart.month.getDisplayName(monthStyle, locale)} ${weekStart.year}"
-    } else {
-      val startMonth = weekStart.month.getDisplayName(TextStyle.SHORT, locale)
-      val endMonth = weekEnd.month.getDisplayName(TextStyle.SHORT, locale)
-      "$startMonth ${weekStart.dayOfMonth} – $endMonth ${weekEnd.dayOfMonth}, ${weekEnd.year}"
-    }
+    val monday = mondayInWeek(weekStart)
+    return "${monday.month.getDisplayName(TextStyle.FULL, locale)} ${monday.year}"
   }
 
   fun dayOfWeekLabel(date: LocalDate, locale: Locale = Locale.getDefault()): String =
@@ -96,6 +131,9 @@ object CalendarWeek {
     val api = filter.apiValue ?: return true
     return entry.format.equals(api, ignoreCase = true)
   }
+
+  fun matchesHideHentai(entry: CalendarAiringEntry, hideHentai: Boolean): Boolean =
+      !hideHentai || !entry.genres.containsHentaiGenre()
 
   fun sortEntries(entries: List<CalendarAiringEntry>, sort: LibrarySort): List<CalendarAiringEntry> =
       entries.sortedWith(

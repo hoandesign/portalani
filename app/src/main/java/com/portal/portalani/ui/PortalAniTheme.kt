@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,6 +60,14 @@ object FrameViewerInsets {
   /** Slideshow is immersive (system bars hidden) — no extra top safe-zone inset. */
   val horizontal = 32.dp
   val vertical = 12.dp
+  /** Shared poster + info layout for informative mode and expanded poster / calendar detail. */
+  val posterInfoGap = 36.dp
+  const val expandedPosterHeightFraction = 0.94f
+  val detailContentPadding =
+      PaddingValues(
+          horizontal = horizontal,
+          vertical = vertical,
+      )
   /** Screen-fixed clock sits outside the poster frame — give it a bit more breathing room. */
   val clockStart = 36.dp
   val clockBottom = 32.dp

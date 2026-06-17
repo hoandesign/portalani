@@ -121,6 +121,7 @@ class SettingsStore(context: Context) {
         idleSleepMinutes = prefs.getInt(KEY_IDLE_SLEEP_MINUTES, PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES),
         sleepStartMinutes = prefs.getInt(KEY_SLEEP_START_MINUTES, PowerPolicy.DEFAULT_SLEEP_START_MINUTES),
         sleepEndMinutes = prefs.getInt(KEY_SLEEP_END_MINUTES, PowerPolicy.DEFAULT_SLEEP_END_MINUTES),
+        hideHentai = prefs.getBoolean(KEY_HIDE_HENTAI, true),
     )
   }
 
@@ -164,6 +165,7 @@ class SettingsStore(context: Context) {
       putInt(KEY_IDLE_SLEEP_MINUTES, settings.idleSleepMinutes)
       putInt(KEY_SLEEP_START_MINUTES, settings.sleepStartMinutes)
       putInt(KEY_SLEEP_END_MINUTES, settings.sleepEndMinutes)
+      putBoolean(KEY_HIDE_HENTAI, settings.hideHentai)
     }
   }
 
@@ -190,6 +192,7 @@ class SettingsStore(context: Context) {
     private const val KEY_IDLE_SLEEP_MINUTES = "idle_sleep_minutes"
     private const val KEY_SLEEP_START_MINUTES = "sleep_start_minutes"
     private const val KEY_SLEEP_END_MINUTES = "sleep_end_minutes"
+    private const val KEY_HIDE_HENTAI = "hide_hentai"
     private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
   }
 }

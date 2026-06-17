@@ -54,6 +54,7 @@ import com.portal.portalani.UiState
 import com.portal.portalani.CalendarWeekState
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AppSettings
+import com.portal.portalani.data.CalendarAiringEntry
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.GeoPlace
@@ -77,6 +78,7 @@ fun PortalAniApp(
     weather: WeatherNow? = null,
     calendarState: CalendarWeekState? = null,
     calendarLoading: Boolean = false,
+    calendarDetailSlide: AnimeSlide? = null,
     geoStatus: String? = null,
     geoResults: List<GeoPlace> = emptyList(),
     viewerName: String?,
@@ -94,6 +96,9 @@ fun PortalAniApp(
     onSetShuffle: (Boolean) -> Unit,
     onSetFrameMode: (FrameMode) -> Unit,
     onShiftCalendarWeek: (Int) -> Unit = {},
+    onGoToCalendarToday: () -> Unit = {},
+    onOpenCalendarEntry: (CalendarAiringEntry) -> Unit = {},
+    onCloseCalendarDetail: () -> Unit = {},
     onSetWeekStart: (WeekStart) -> Unit = {},
     onSetShowPosterClock: (Boolean) -> Unit,
     onSetShowWeather: (Boolean) -> Unit = {},
@@ -106,6 +111,7 @@ fun PortalAniApp(
     onSetSourceMode: (SourceMode) -> Unit,
     onSetListStatuses: (Set<ListStatus>) -> Unit,
     onSetFormatFilter: (FormatFilter) -> Unit,
+    onSetHideHentai: (Boolean) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
     onSetPowerMode: (PowerMode) -> Unit = {},
@@ -133,7 +139,7 @@ fun PortalAniApp(
   Box(modifier = Modifier.fillMaxSize()) {
     Surface(modifier = Modifier.fillMaxSize(), color = PortalAniColors.Background) {
       when (state) {
-        UiState.Loading -> AnimeLoadingScreen()
+        UiState.Loading -> AnimeLoadingScreen(frameMode = settings.frameMode)
         UiState.SigningIn -> AnimeLoadingScreen(message = stringResource(R.string.sign_in_hint))
         is UiState.NeedsSetup ->
             SetupScreen(
@@ -151,8 +157,17 @@ fun PortalAniApp(
                   loading = calendarLoading,
                   weekStartSetting = settings.weekStart,
                   settingsOpen = showSettings,
+                  detailSlide = calendarDetailSlide,
+                  isSignedIn = isSignedIn,
                   onToggleSettings = { showSettings = !showSettings },
                   onShiftWeek = onShiftCalendarWeek,
+                  onGoToToday = onGoToCalendarToday,
+                  onOpenEntry = onOpenCalendarEntry,
+                  onCloseDetail = onCloseCalendarDetail,
+                  onSetUserScore = onSetUserScore,
+                  onToggleFavourite = onToggleFavourite,
+                  onSetAnimeListStatus = onSetAnimeListStatus,
+                  onRemoveFromList = onRemoveFromList,
                   onUserInteraction = onUserInteraction,
               )
             } else {
@@ -213,6 +228,7 @@ fun PortalAniApp(
           onSetSourceMode = onSetSourceMode,
           onSetListStatuses = onSetListStatuses,
           onSetFormatFilter = onSetFormatFilter,
+          onSetHideHentai = onSetHideHentai,
           onSetLibrarySort = onSetLibrarySort,
           onSetSeasonKey = onSetSeasonKey,
           onSetPowerMode = onSetPowerMode,
@@ -706,6 +722,7 @@ private fun SettingsPanel(
     onSetSourceMode: (SourceMode) -> Unit,
     onSetListStatuses: (Set<ListStatus>) -> Unit,
     onSetFormatFilter: (FormatFilter) -> Unit,
+    onSetHideHentai: (Boolean) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
     onSetPowerMode: (PowerMode) -> Unit,
@@ -1056,6 +1073,15 @@ private fun SettingsPanel(
             )
           }
         }
+        PortalSettingsDivider()
+        PortalSettingsToggleRow(
+            label = stringResource(R.string.hide_hentai_genre),
+            checked = settings.hideHentai,
+            onCheckedChange = {
+              onUserInteraction()
+              onSetHideHentai(it)
+            },
+        )
       }
 
       Spacer(Modifier.height(22.dp))

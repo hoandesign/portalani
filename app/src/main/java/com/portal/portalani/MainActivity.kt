@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
         val settings by vm.settings.collectAsStateWithLifecycle()
         val calendarState by vm.calendarState.collectAsStateWithLifecycle()
         val calendarLoading by vm.calendarLoading.collectAsStateWithLifecycle()
+        val calendarDetailSlide by vm.calendarDetailSlide.collectAsStateWithLifecycle()
         val viewerName by vm.viewerName.collectAsStateWithLifecycle()
         val isSignedIn by vm.isSignedIn.collectAsStateWithLifecycle()
         val userMessage by vm.userMessage.collectAsStateWithLifecycle()
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
             weather = weather,
             calendarState = calendarState,
             calendarLoading = calendarLoading,
+            calendarDetailSlide = calendarDetailSlide,
             geoStatus = geoStatus,
             geoResults = geoResults,
             viewerName = viewerName,
@@ -99,6 +101,9 @@ class MainActivity : ComponentActivity() {
             onSetShuffle = vm::setShuffle,
             onSetFrameMode = vm::setFrameMode,
             onShiftCalendarWeek = vm::shiftCalendarWeek,
+            onGoToCalendarToday = vm::goToCalendarToday,
+            onOpenCalendarEntry = vm::openCalendarEntry,
+            onCloseCalendarDetail = vm::closeCalendarDetail,
             onSetWeekStart = vm::setWeekStart,
             onSetShowPosterClock = vm::setShowPosterClock,
             onSetShowWeather = vm::setShowWeather,
@@ -122,6 +127,7 @@ class MainActivity : ComponentActivity() {
             onSetSourceMode = vm::setSourceMode,
             onSetListStatuses = vm::setListStatuses,
             onSetFormatFilter = vm::setFormatFilter,
+            onSetHideHentai = vm::setHideHentai,
             onSetLibrarySort = vm::setLibrarySort,
             onSetSeasonKey = vm::setSeasonKey,
             onSetPowerMode = vm::setPowerMode,

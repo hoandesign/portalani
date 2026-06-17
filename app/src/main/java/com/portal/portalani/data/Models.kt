@@ -199,12 +199,14 @@ data class AppSettings(
     val idleSleepMinutes: Int = PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES,
     val sleepStartMinutes: Int = PowerPolicy.DEFAULT_SLEEP_START_MINUTES,
     val sleepEndMinutes: Int = PowerPolicy.DEFAULT_SLEEP_END_MINUTES,
+    val hideHentai: Boolean = true,
 ) {
   fun libraryFilters(): LibraryFilters =
       LibraryFilters(
           format = formatFilter,
           sort = librarySort,
           seasonKey = seasonKey,
+          hideHentai = hideHentai,
       )
 
   fun cacheKey(): String =
@@ -213,14 +215,16 @@ data class AppSettings(
             "personal_" +
                 listStatuses
                     .sortedBy { it.ordinal }
-                    .joinToString("_") { it.name }
-        SourceMode.LIBRARY -> "library_${formatFilter.name}_${librarySort.name}_$seasonKey"
+                    .joinToString("_") { it.name } +
+                "_hentai${if (hideHentai) 1 else 0}"
+        SourceMode.LIBRARY ->
+            "library_${formatFilter.name}_${librarySort.name}_${seasonKey}_hentai${if (hideHentai) 1 else 0}"
       }
 
   fun calendarCacheKey(weekStartEpochDay: Long): String =
       "calendar_${sourceMode.name}_${formatFilter.name}_${librarySort.name}_" +
           listStatuses.sortedBy { it.ordinal }.joinToString("_") { it.name } +
-          "_$weekStartEpochDay"
+          "_hentai${if (hideHentai) 1 else 0}_$weekStartEpochDay"
 }
 
 data class ViewerProfile(
