@@ -259,6 +259,8 @@ If it does not:
 
 Sign-in is required for **Personal** calendar; **Full library** works without signing in.
 
+### Clock & weather setup
+
 1. Open **Settings** (long-press center).
 2. Under **Clock & weather**, turn on **Show clock**.
 3. Optionally turn on **Show weather** — if you have no location yet, the location dialog opens.
