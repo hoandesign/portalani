@@ -112,6 +112,9 @@ class SettingsStore(context: Context) {
         weatherLat = weatherLat,
         weatherLon = weatherLon,
         weatherPlace = weatherPlace,
+        weekStart =
+            runCatching { WeekStart.valueOf(prefs.getString(KEY_WEEK_START, WeekStart.MONDAY.name)!!) }
+                .getOrDefault(WeekStart.MONDAY),
         powerMode =
             runCatching { PowerMode.valueOf(prefs.getString(KEY_POWER_MODE, PowerMode.ALWAYS_ON.name)!!) }
                 .getOrDefault(PowerMode.ALWAYS_ON),
@@ -144,6 +147,7 @@ class SettingsStore(context: Context) {
       putString(KEY_LIBRARY_SORT, settings.librarySort.name)
       putString(KEY_SEASON_KEY, settings.seasonKey)
       putString(KEY_FRAME_MODE, settings.frameMode.name)
+      putString(KEY_WEEK_START, settings.weekStart.name)
       putBoolean(KEY_SHOW_POSTER_CLOCK, settings.showPosterClock)
       putBoolean(KEY_SHOW_WEATHER, settings.showWeather)
       putBoolean(KEY_WEATHER_FAHRENHEIT, settings.weatherFahrenheit)
@@ -175,6 +179,7 @@ class SettingsStore(context: Context) {
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_SEASON_KEY = "season_key"
     private const val KEY_FRAME_MODE = "frame_mode"
+    private const val KEY_WEEK_START = "week_start"
     private const val KEY_SHOW_POSTER_CLOCK = "show_poster_clock"
     private const val KEY_SHOW_WEATHER = "show_weather"
     private const val KEY_WEATHER_FAHRENHEIT = "weather_fahrenheit"

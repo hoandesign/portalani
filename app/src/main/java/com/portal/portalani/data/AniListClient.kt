@@ -82,6 +82,65 @@ class AniListClient(private val http: OkHttpClient) {
       )
 
   @Throws(IOException::class)
+  fun fetchAiringSchedules(
+      airingAtGreater: Int,
+      airingAtLesser: Int,
+      accessToken: String? = null,
+      perPage: Int = DEFAULT_PER_PAGE,
+  ): List<CalendarAiringEntry> {
+    val all = mutableListOf<CalendarAiringEntry>()
+    var page = 1
+    while (page <= 20) {
+      val variables =
+          JSONObject()
+              .put("page", page)
+              .put("perPage", perPage)
+              .put("airingAt_greater", airingAtGreater)
+              .put("airingAt_lesser", airingAtLesser)
+      val query = if (accessToken != null) AIRING_SCHEDULE_AUTH_QUERY else AIRING_SCHEDULE_QUERY
+      val data = postGraphQl(query, variables, accessToken)
+      val schedules = data.getJSONObject("Page").optJSONArray("airingSchedules") ?: JSONArray()
+      if (schedules.length() == 0) break
+      for (i in 0 until schedules.length()) {
+        parseAiringSchedule(schedules.getJSONObject(i))?.let { all += it }
+      }
+      if (schedules.length() < perPage) break
+      page++
+    }
+    return all
+  }
+
+  private fun parseAiringSchedule(node: JSONObject): CalendarAiringEntry? {
+    val media = node.optJSONObject("media") ?: return null
+    val coverImage = media.optJSONObject("coverImage")
+    val cover =
+        sequenceOf("extraLarge", "large", "medium")
+            .mapNotNull { key ->
+              coverImage?.optString(key).orEmpty().takeIf { it.isNotBlank() && it != "null" }
+            }
+            .firstOrNull()
+            ?: return null
+    val titleObj = media.optJSONObject("title")
+    val english = titleObj?.optString("english").orEmpty().takeIf { it.isNotBlank() && it != "null" }
+    val romaji = titleObj?.optString("romaji").orEmpty().takeIf { it.isNotBlank() && it != "null" }
+    val entry = media.optJSONObject("mediaListEntry")
+    return CalendarAiringEntry(
+        scheduleId = node.getInt("id"),
+        mediaId = media.getInt("id"),
+        title = english ?: romaji ?: "Anime",
+        coverUrl = cover,
+        episode = node.optInt("episode").takeIf { it > 0 } ?: return null,
+        airingAt = node.optInt("airingAt").takeIf { it > 0 } ?: return null,
+        format = media.optString("format").takeIf { it.isNotBlank() && it != "null" },
+        season = media.optString("season").takeIf { it.isNotBlank() && it != "null" },
+        seasonYear = media.optInt("seasonYear").takeIf { it > 0 },
+        averageScore = media.optInt("averageScore").takeIf { it > 0 },
+        popularity = media.optInt("popularity").takeIf { it > 0 },
+        listStatus = entry?.optString("status").toListStatusOrNull(),
+    )
+  }
+
+  @Throws(IOException::class)
   fun fetchViewerList(
       accessToken: String,
       userId: Int,
@@ -518,6 +577,76 @@ class AniListClient(private val http: OkHttpClient) {
               media {
                 $MEDIA_FIELDS
                 isFavourite
+              }
+            }
+          }
+        }
+        """
+            .trimIndent()
+
+    private val AIRING_SCHEDULE_MEDIA_FIELDS =
+        """
+        id
+        title { romaji english }
+        coverImage { extraLarge large medium }
+        format
+        season
+        seasonYear
+        averageScore
+        popularity
+        """
+
+    private val AIRING_SCHEDULE_QUERY =
+        """
+        query (
+          ${'$'}page: Int,
+          ${'$'}perPage: Int,
+          ${'$'}airingAt_greater: Int,
+          ${'$'}airingAt_lesser: Int
+        ) {
+          Page(page: ${'$'}page, perPage: ${'$'}perPage) {
+            airingSchedules(
+              airingAt_greater: ${'$'}airingAt_greater
+              airingAt_lesser: ${'$'}airingAt_lesser
+              sort: TIME
+            ) {
+              id
+              airingAt
+              episode
+              mediaId
+              media {
+                $AIRING_SCHEDULE_MEDIA_FIELDS
+              }
+            }
+          }
+        }
+        """
+            .trimIndent()
+
+    private val AIRING_SCHEDULE_AUTH_QUERY =
+        """
+        query (
+          ${'$'}page: Int,
+          ${'$'}perPage: Int,
+          ${'$'}airingAt_greater: Int,
+          ${'$'}airingAt_lesser: Int
+        ) {
+          Page(page: ${'$'}page, perPage: ${'$'}perPage) {
+            airingSchedules(
+              airingAt_greater: ${'$'}airingAt_greater
+              airingAt_lesser: ${'$'}airingAt_lesser
+              sort: TIME
+            ) {
+              id
+              airingAt
+              episode
+              mediaId
+              media {
+                $AIRING_SCHEDULE_MEDIA_FIELDS
+                mediaListEntry {
+                  id
+                  status
+                }
               }
             }
           }

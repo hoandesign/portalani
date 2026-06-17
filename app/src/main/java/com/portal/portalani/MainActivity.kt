@@ -48,6 +48,8 @@ class MainActivity : ComponentActivity() {
       PortalAniTheme {
         val state by vm.state.collectAsStateWithLifecycle()
         val settings by vm.settings.collectAsStateWithLifecycle()
+        val calendarState by vm.calendarState.collectAsStateWithLifecycle()
+        val calendarLoading by vm.calendarLoading.collectAsStateWithLifecycle()
         val viewerName by vm.viewerName.collectAsStateWithLifecycle()
         val isSignedIn by vm.isSignedIn.collectAsStateWithLifecycle()
         val userMessage by vm.userMessage.collectAsStateWithLifecycle()
@@ -78,6 +80,8 @@ class MainActivity : ComponentActivity() {
             state = state,
             settings = settings,
             weather = weather,
+            calendarState = calendarState,
+            calendarLoading = calendarLoading,
             geoStatus = geoStatus,
             geoResults = geoResults,
             viewerName = viewerName,
@@ -94,6 +98,8 @@ class MainActivity : ComponentActivity() {
             onRemoveFromList = vm::removeFromList,
             onSetShuffle = vm::setShuffle,
             onSetFrameMode = vm::setFrameMode,
+            onShiftCalendarWeek = vm::shiftCalendarWeek,
+            onSetWeekStart = vm::setWeekStart,
             onSetShowPosterClock = vm::setShowPosterClock,
             onSetShowWeather = vm::setShowWeather,
             onSetWeatherFahrenheit = vm::setWeatherFahrenheit,

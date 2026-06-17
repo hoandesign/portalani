@@ -16,6 +16,8 @@ import com.portal.portalani.data.AniListClient
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
+import com.portal.portalani.data.CalendarAiringEntry
+import com.portal.portalani.data.CalendarWeek
 import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.FrameMode
@@ -29,6 +31,9 @@ import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.TokenStore
 import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.WeatherNow
+import com.portal.portalani.data.WeekStart
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +69,12 @@ sealed interface UiState {
       val canOpenSettings: Boolean = false,
   ) : UiState
 }
+
+data class CalendarWeekState(
+    val weekStart: LocalDate,
+    val entries: List<CalendarAiringEntry>,
+    val fromCache: Boolean = false,
+)
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val http =
@@ -106,6 +117,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val _geoResults = MutableStateFlow<List<GeoPlace>>(emptyList())
   val geoResults: StateFlow<List<GeoPlace>> = _geoResults.asStateFlow()
 
+  private val _calendarState = MutableStateFlow<CalendarWeekState?>(null)
+  val calendarState: StateFlow<CalendarWeekState?> = _calendarState.asStateFlow()
+
+  private val _calendarLoading = MutableStateFlow(false)
+  val calendarLoading: StateFlow<Boolean> = _calendarLoading.asStateFlow()
+
+  private var calendarWeekOffset = 0
+
   private var pendingOAuthState: String? = null
 
   private var feedNextPage = 1
@@ -124,7 +143,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun refresh(forceReload: Boolean = false) {
     viewModelScope.launch {
-      loadSlides(showLoading = forceReload || _state.value !is UiState.Showing)
+      if (_settings.value.frameMode == FrameMode.CALENDAR) {
+        if (forceReload) calendarWeekOffset = 0
+        loadCalendarWeek(showLoading = forceReload || _calendarState.value == null)
+      } else {
+        loadSlides(showLoading = forceReload || _state.value !is UiState.Showing)
+      }
+    }
+  }
+
+  fun shiftCalendarWeek(delta: Int) {
+    calendarWeekOffset += delta
+    viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+  }
+
+  fun setWeekStart(weekStart: WeekStart) {
+    updateSettings(_settings.value.copy(weekStart = weekStart))
+    if (_settings.value.frameMode == FrameMode.CALENDAR) {
+      calendarWeekOffset = 0
+      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
     }
   }
 
@@ -206,8 +243,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun setSourceMode(mode: SourceMode) {
+    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(sourceMode = mode))
-    refresh(forceReload = true)
+    if (calendar) {
+      calendarWeekOffset = 0
+      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+    } else {
+      refresh(forceReload = true)
+    }
   }
 
   fun setShuffle(enabled: Boolean) {
@@ -226,7 +269,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun setFrameMode(mode: FrameMode) {
+    val leavingCalendar = _settings.value.frameMode == FrameMode.CALENDAR && mode != FrameMode.CALENDAR
     updateSettings(_settings.value.copy(frameMode = mode))
+    if (mode == FrameMode.CALENDAR) {
+      calendarWeekOffset = 0
+      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+    } else if (leavingCalendar) {
+      refresh(forceReload = true)
+    }
   }
 
   fun setShowPosterClock(enabled: Boolean) {
@@ -423,18 +473,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setListStatuses(statuses: Set<ListStatus>) {
     if (statuses.isEmpty()) return
+    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(listStatuses = statuses))
-    refresh(forceReload = true)
+    if (calendar) {
+      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+    } else {
+      refresh(forceReload = true)
+    }
   }
 
   fun setFormatFilter(filter: FormatFilter) {
+    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(formatFilter = filter))
-    refresh(forceReload = true)
+    if (calendar) {
+      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+    } else {
+      refresh(forceReload = true)
+    }
   }
 
   fun setLibrarySort(sort: LibrarySort) {
+    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(librarySort = sort))
-    refresh(forceReload = true)
+    if (calendar) {
+      viewModelScope.launch { loadCalendarWeek(showLoading = true) }
+    } else {
+      refresh(forceReload = true)
+    }
   }
 
   fun setSeasonKey(key: String) {
@@ -577,7 +642,70 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     _settings.value = next
   }
 
+  private suspend fun loadCalendarWeek(showLoading: Boolean) {
+    val settings = _settings.value
+    val token = tokens.accessToken()
+
+    if (settings.sourceMode == SourceMode.PERSONAL && token == null) {
+      _calendarState.value = null
+      _state.value =
+          UiState.NeedsSetup(
+              message = "Sign in to show your list schedule on the calendar.",
+              canSignIn = auth.isConfigured(),
+              canUseLibrary = true,
+          )
+      return
+    }
+
+    val zone = ZoneId.systemDefault()
+    val today = LocalDate.now(zone)
+    val anchor = CalendarWeek.startOfWeek(today, settings.weekStart)
+    val weekStart = anchor.plusWeeks(calendarWeekOffset.toLong())
+    val weekEnd = weekStart.plusDays(6)
+    val airingAtGreater = weekStart.atStartOfDay(zone).toEpochSecond().toInt()
+    val airingAtLesser = weekEnd.atTime(23, 59, 59).atZone(zone).toEpochSecond().toInt()
+
+    if (showLoading) _calendarLoading.value = true
+
+    try {
+      val raw =
+          withContext(Dispatchers.IO) {
+            client.fetchAiringSchedules(
+                airingAtGreater = airingAtGreater,
+                airingAtLesser = airingAtLesser,
+                accessToken = token,
+            )
+          }
+      val filtered =
+          raw
+              .asSequence()
+              .filter { CalendarWeek.matchesSeasonWindow(it.season, it.seasonYear) }
+              .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
+              .filter { entry ->
+                if (settings.sourceMode != SourceMode.PERSONAL) {
+                  true
+                } else {
+                  entry.isOnList && entry.listStatus in settings.listStatuses
+                }
+              }
+              .toList()
+      val sorted = CalendarWeek.sortEntries(filtered, settings.librarySort)
+      _calendarState.value = CalendarWeekState(weekStart = weekStart, entries = sorted)
+      _state.value = UiState.Showing(slides = emptyList(), fromCache = false)
+    } catch (e: Exception) {
+      if (_calendarState.value == null) {
+        _state.value = UiState.Error(e.message ?: "Could not load airing schedule", canOpenSettings = true)
+      }
+    } finally {
+      _calendarLoading.value = false
+    }
+  }
+
   private suspend fun loadSlides(showLoading: Boolean) {
+    if (_settings.value.frameMode == FrameMode.CALENDAR) {
+      loadCalendarWeek(showLoading)
+      return
+    }
     val settings = _settings.value
     val token = tokens.accessToken()
     val cacheKey = settings.cacheKey()

@@ -235,7 +235,8 @@ If it does not:
 | Setting | Description |
 |---------|-------------|
 | Source | Personal (your lists) vs Full library (catalog) — under **What to show** |
-| Frame mode | **Poster only** (centered poster + optional clock) or **Informative** (poster + synopsis side by side) |
+| Frame mode | **Poster only**, **Informative**, or **Calendar** (weekly schedule) |
+| Week starts on | Monday (default) or Sunday — calendar mode only |
 | Shuffle | Randomize slide order |
 | Seconds per slide | Auto-advance interval (5–120 s) |
 | Lists | Which AniList lists to show (Personal mode); select multiple |
@@ -246,7 +247,17 @@ If it does not:
 | Location | City search or **Use my location**; stored on device for refresh |
 | Power | Always on (default), sleep after idle, or off during quiet hours (default 10 PM–7 AM; 30 min grace if opened during quiet hours) |
 
-### Clock & weather setup
+**Calendar mode** uses this season plus the next three anime seasons (not the season picker). Year picker in other modes now includes up to **two years ahead** of the current year.
+
+### Calendar mode setup
+
+1. Open **Settings** → **Frame mode** → **Calendar**.
+2. Set **Source**, **Format**, and **Sort** under **What to show** (same as slideshow).
+3. For **Personal**, pick which lists count toward your schedule.
+4. Optionally set **Week starts on** to Sunday.
+5. Swipe left/right (or tap screen edges) to browse other weeks.
+
+Sign-in is required for **Personal** calendar; **Full library** works without signing in.
 
 1. Open **Settings** (long-press center).
 2. Under **Clock & weather**, turn on **Show clock**.

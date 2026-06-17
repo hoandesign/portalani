@@ -162,6 +162,7 @@ fun AnimeFrameSlide(
               onToggleFavourite = onToggleFavourite,
               onEditList = onEditList,
           )
+      FrameMode.CALENDAR -> Unit
     }
   }
 }

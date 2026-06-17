@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.portal.portalani.R
 import com.portal.portalani.UiState
+import com.portal.portalani.CalendarWeekState
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.FormatFilter
@@ -63,6 +64,7 @@ import com.portal.portalani.data.PowerPolicy
 import com.portal.portalani.data.SeasonSelection
 import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.WeatherNow
+import com.portal.portalani.data.WeekStart
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlin.random.Random
@@ -73,6 +75,8 @@ fun PortalAniApp(
     state: UiState,
     settings: AppSettings,
     weather: WeatherNow? = null,
+    calendarState: CalendarWeekState? = null,
+    calendarLoading: Boolean = false,
     geoStatus: String? = null,
     geoResults: List<GeoPlace> = emptyList(),
     viewerName: String?,
@@ -89,6 +93,8 @@ fun PortalAniApp(
     onRemoveFromList: (Int) -> Unit,
     onSetShuffle: (Boolean) -> Unit,
     onSetFrameMode: (FrameMode) -> Unit,
+    onShiftCalendarWeek: (Int) -> Unit = {},
+    onSetWeekStart: (WeekStart) -> Unit = {},
     onSetShowPosterClock: (Boolean) -> Unit,
     onSetShowWeather: (Boolean) -> Unit = {},
     onSetWeatherFahrenheit: (Boolean) -> Unit = {},
@@ -139,29 +145,41 @@ fun PortalAniApp(
                 onRetry = onRetry,
             )
         is UiState.Showing ->
-            SlideshowScreen(
-                slides = state.slides,
-                fromCache = state.fromCache,
-                orderResetToken = state.orderResetToken,
-                shuffle = settings.shuffle,
-                intervalMs = settings.intervalMs,
-                frameMode = settings.frameMode,
-                showPosterClock = settings.showPosterClock,
-                showWeather = settings.showWeather && settings.showPosterClock,
-                weather = weather,
-                settingsOpen = showSettings,
-                isSignedIn = isSignedIn,
-                onToggleSettings = { showSettings = !showSettings },
-                onSignIn = onSignIn,
-                onSetUserScore = onSetUserScore,
-                onToggleFavourite = onToggleFavourite,
-                onSetAnimeListStatus = onSetAnimeListStatus,
-                onRemoveFromList = onRemoveFromList,
-                onSlideIndexChanged = onSlideIndexChanged,
-                onUserInteraction = onUserInteraction,
-                onboardingComplete = onboardingComplete,
-                onCompleteOnboarding = onCompleteOnboarding,
-            )
+            if (settings.frameMode == FrameMode.CALENDAR) {
+              CalendarHostScreen(
+                  weekState = calendarState,
+                  loading = calendarLoading,
+                  weekStartSetting = settings.weekStart,
+                  settingsOpen = showSettings,
+                  onToggleSettings = { showSettings = !showSettings },
+                  onShiftWeek = onShiftCalendarWeek,
+                  onUserInteraction = onUserInteraction,
+              )
+            } else {
+              SlideshowScreen(
+                  slides = state.slides,
+                  fromCache = state.fromCache,
+                  orderResetToken = state.orderResetToken,
+                  shuffle = settings.shuffle,
+                  intervalMs = settings.intervalMs,
+                  frameMode = settings.frameMode,
+                  showPosterClock = settings.showPosterClock,
+                  showWeather = settings.showWeather && settings.showPosterClock,
+                  weather = weather,
+                  settingsOpen = showSettings,
+                  isSignedIn = isSignedIn,
+                  onToggleSettings = { showSettings = !showSettings },
+                  onSignIn = onSignIn,
+                  onSetUserScore = onSetUserScore,
+                  onToggleFavourite = onToggleFavourite,
+                  onSetAnimeListStatus = onSetAnimeListStatus,
+                  onRemoveFromList = onRemoveFromList,
+                  onSlideIndexChanged = onSlideIndexChanged,
+                  onUserInteraction = onUserInteraction,
+                  onboardingComplete = onboardingComplete,
+                  onCompleteOnboarding = onCompleteOnboarding,
+              )
+            }
         is UiState.Error ->
             ErrorScreen(
                 message = state.message,
@@ -183,6 +201,7 @@ fun PortalAniApp(
           onSignOut = onSignOut,
           onSetShuffle = onSetShuffle,
           onSetFrameMode = onSetFrameMode,
+          onSetWeekStart = onSetWeekStart,
           onSetShowPosterClock = onSetShowPosterClock,
           onSetShowWeather = onSetShowWeather,
           onSetWeatherFahrenheit = onSetWeatherFahrenheit,
@@ -675,6 +694,7 @@ private fun SettingsPanel(
     onSignOut: () -> Unit,
     onSetShuffle: (Boolean) -> Unit,
     onSetFrameMode: (FrameMode) -> Unit,
+    onSetWeekStart: (WeekStart) -> Unit,
     onSetShowPosterClock: (Boolean) -> Unit,
     onSetShowWeather: (Boolean) -> Unit,
     onSetWeatherFahrenheit: (Boolean) -> Unit,
@@ -702,6 +722,7 @@ private fun SettingsPanel(
   var seasonMenuOpen by remember { mutableStateOf(false) }
   var sourceMenuOpen by remember { mutableStateOf(false) }
   var frameMenuOpen by remember { mutableStateOf(false) }
+  var weekStartMenuOpen by remember { mutableStateOf(false) }
   var intervalMenuOpen by remember { mutableStateOf(false) }
   var powerMenuOpen by remember { mutableStateOf(false) }
   var idleMenuOpen by remember { mutableStateOf(false) }
@@ -727,6 +748,12 @@ private fun SettingsPanel(
       listOf(
           FrameMode.INFORMATIVE.name to stringResource(R.string.frame_mode_informative),
           FrameMode.POSTER_ONLY.name to stringResource(R.string.frame_mode_poster),
+          FrameMode.CALENDAR.name to stringResource(R.string.frame_mode_calendar),
+      )
+  val weekStartOptions =
+      listOf(
+          WeekStart.MONDAY.name to stringResource(R.string.week_start_monday),
+          WeekStart.SUNDAY.name to stringResource(R.string.week_start_sunday),
       )
   val intervalOptions = listOf(8, 12, 20, 30).map { seconds -> seconds.toString() to "$seconds s" }
   val powerOptions =
@@ -746,6 +773,7 @@ private fun SettingsPanel(
           seasonMenuOpen ||
           sourceMenuOpen ||
           frameMenuOpen ||
+          weekStartMenuOpen ||
           intervalMenuOpen ||
           powerMenuOpen ||
           idleMenuOpen ||
@@ -774,6 +802,7 @@ private fun SettingsPanel(
     seasonMenuOpen = false
     sourceMenuOpen = false
     frameMenuOpen = false
+    weekStartMenuOpen = false
     intervalMenuOpen = false
     powerMenuOpen = false
     idleMenuOpen = false
@@ -844,34 +873,52 @@ private fun SettingsPanel(
         PortalSettingsRow(
             label = stringResource(R.string.frame_mode),
             value =
-                if (settings.frameMode == FrameMode.INFORMATIVE) {
-                  stringResource(R.string.frame_mode_informative)
-                } else {
-                  stringResource(R.string.frame_mode_poster)
+                when (settings.frameMode) {
+                  FrameMode.INFORMATIVE -> stringResource(R.string.frame_mode_informative)
+                  FrameMode.POSTER_ONLY -> stringResource(R.string.frame_mode_poster)
+                  FrameMode.CALENDAR -> stringResource(R.string.frame_mode_calendar)
                 },
             onClick = {
               onUserInteraction()
               frameMenuOpen = true
             },
         )
-        PortalSettingsDivider()
-        PortalSettingsRow(
-            label = stringResource(R.string.interval_seconds),
-            value = "$intervalSeconds s",
-            onClick = {
-              onUserInteraction()
-              intervalMenuOpen = true
-            },
-        )
-        PortalSettingsDivider()
-        PortalSettingsToggleRow(
-            label = stringResource(R.string.shuffle),
-            checked = settings.shuffle,
-            onCheckedChange = {
-              onUserInteraction()
-              onSetShuffle(it)
-            },
-        )
+        if (settings.frameMode == FrameMode.CALENDAR) {
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.week_starts_on),
+              value =
+                  if (settings.weekStart == WeekStart.MONDAY) {
+                    stringResource(R.string.week_start_monday)
+                  } else {
+                    stringResource(R.string.week_start_sunday)
+                  },
+              onClick = {
+                onUserInteraction()
+                weekStartMenuOpen = true
+              },
+          )
+        }
+        if (settings.frameMode != FrameMode.CALENDAR) {
+          PortalSettingsDivider()
+          PortalSettingsRow(
+              label = stringResource(R.string.interval_seconds),
+              value = "$intervalSeconds s",
+              onClick = {
+                onUserInteraction()
+                intervalMenuOpen = true
+              },
+          )
+          PortalSettingsDivider()
+          PortalSettingsToggleRow(
+              label = stringResource(R.string.shuffle),
+              checked = settings.shuffle,
+              onCheckedChange = {
+                onUserInteraction()
+                onSetShuffle(it)
+              },
+          )
+        }
       }
 
       Spacer(Modifier.height(22.dp))
@@ -966,6 +1013,20 @@ private fun SettingsPanel(
               value = listStatusesSettingLabel(settings.listStatuses),
               onClick = { statusMenuOpen = true },
           )
+          if (settings.frameMode == FrameMode.CALENDAR) {
+            PortalSettingsDivider()
+            PortalSettingsRow(
+                label = stringResource(R.string.format_filter),
+                value = settings.formatFilter.label,
+                onClick = { formatMenuOpen = true },
+            )
+            PortalSettingsDivider()
+            PortalSettingsRow(
+                label = stringResource(R.string.sort_by),
+                value = settings.librarySort.label,
+                onClick = { sortMenuOpen = true },
+            )
+          }
         } else {
           PortalSettingsRow(
               label = stringResource(R.string.format_filter),
@@ -979,11 +1040,21 @@ private fun SettingsPanel(
               onClick = { sortMenuOpen = true },
           )
           PortalSettingsDivider()
-          PortalSettingsRow(
-              label = stringResource(R.string.season_filter),
-              value = SeasonSelection.labelFor(settings.seasonKey),
-              onClick = { seasonMenuOpen = true },
-          )
+          if (settings.frameMode == FrameMode.CALENDAR) {
+            PortalSettingsRow(
+                label = stringResource(R.string.season_filter),
+                value = stringResource(R.string.calendar_season_window),
+                onClick = {},
+                enabled = false,
+                showChevron = false,
+            )
+          } else {
+            PortalSettingsRow(
+                label = stringResource(R.string.season_filter),
+                value = SeasonSelection.labelFor(settings.seasonKey),
+                onClick = { seasonMenuOpen = true },
+            )
+          }
         }
       }
 
@@ -1123,6 +1194,19 @@ private fun SettingsPanel(
         onSelect = { key ->
           onUserInteraction()
           onSetFrameMode(FrameMode.valueOf(key))
+        },
+    )
+  }
+
+  if (weekStartMenuOpen) {
+    PortalPickerDialog(
+        title = stringResource(R.string.week_starts_on),
+        options = weekStartOptions,
+        selectedKey = settings.weekStart.name,
+        onDismiss = { weekStartMenuOpen = false },
+        onSelect = { key ->
+          onUserInteraction()
+          onSetWeekStart(WeekStart.valueOf(key))
         },
     )
   }

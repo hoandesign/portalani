@@ -19,6 +19,16 @@
     <string name="frame_mode">Frame mode</string>
     <string name="frame_mode_informative">Informative</string>
     <string name="frame_mode_poster">Poster only</string>
+    <string name="frame_mode_calendar">Calendar</string>
+    <string name="week_starts_on">Week starts on</string>
+    <string name="week_start_monday">Monday</string>
+    <string name="week_start_sunday">Sunday</string>
+    <string name="calendar_loading">Loading schedule…</string>
+    <string name="calendar_empty_week">No episodes this week for your filters.</string>
+    <string name="calendar_swipe_hint">Swipe or tap screen edges for other weeks</string>
+    <string name="calendar_episode_time">Ep %1$d · %2$s</string>
+    <string name="calendar_season_window">This season + next 3</string>
+    <string name="guide_swipe_week">Swipe for other weeks</string>
     <string name="show_poster_clock">Show clock</string>
     <string name="show_weather">Show weather</string>
     <string name="weather_hint">Current conditions beside the date</string>

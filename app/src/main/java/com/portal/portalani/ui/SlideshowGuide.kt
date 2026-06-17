@@ -45,10 +45,10 @@ fun nextSlideshowGuideStep(
     when (current) {
       SlideshowGuideStep.Swipe -> SlideshowGuideStep.HoldSettings
       SlideshowGuideStep.HoldSettings ->
-          if (frameMode == FrameMode.POSTER_ONLY) {
-            SlideshowGuideStep.TapPoster
-          } else {
-            SlideshowGuideStep.Finished
+          when (frameMode) {
+            FrameMode.POSTER_ONLY -> SlideshowGuideStep.TapPoster
+            FrameMode.CALENDAR -> SlideshowGuideStep.Finished
+            FrameMode.INFORMATIVE -> SlideshowGuideStep.Finished
           }
       SlideshowGuideStep.TapPoster -> SlideshowGuideStep.Finished
       SlideshowGuideStep.Finished -> SlideshowGuideStep.Finished
@@ -81,7 +81,6 @@ fun SlideshowGuideOverlay(
           label = "guidePulseAlpha",
       )
   val hintAlpha = fade * pulse.value
-  val swipeLabel = stringResource(R.string.guide_swipe)
 
   Box(
       modifier =
@@ -91,6 +90,12 @@ fun SlideshowGuideOverlay(
   ) {
     when (step) {
       SlideshowGuideStep.Swipe -> {
+        val swipeLabel =
+            if (frameMode == FrameMode.CALENDAR) {
+              stringResource(R.string.guide_swipe_week)
+            } else {
+              stringResource(R.string.guide_swipe)
+            }
         GuideHintPill(
             text = swipeLabel,
             leadingIcon = PortalIcons.SwipeBack,

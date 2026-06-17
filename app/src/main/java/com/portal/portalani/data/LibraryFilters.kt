@@ -262,9 +262,31 @@ object SeasonSelection {
       )
 
   fun yearColumnOptions(nowYear: Int = Calendar.getInstance().get(Calendar.YEAR)): List<SeasonPickerYear> {
-    val years = (nowYear downTo MIN_YEAR).map { SeasonPickerYear.Specific(it) }
+    val maxYear = nowYear + 2
+    val years = (maxYear downTo MIN_YEAR).map { SeasonPickerYear.Specific(it) }
     return listOf(SeasonPickerYear.Any) + years
   }
+
+  /** Current season plus the next [count] - 1 seasons (4 seasons by default). */
+  fun seasonWindowForward(count: Int): List<LibrarySeasonParams> {
+    var (season, year) = currentSeason()
+    val result = mutableListOf<LibrarySeasonParams>()
+    repeat(count) {
+      result.add(LibrarySeasonParams(season = season.apiValue, seasonYear = year))
+      val next = stepNext(season, year)
+      season = next.first
+      year = next.second
+    }
+    return result
+  }
+
+  private fun stepNext(season: AnimeSeason, year: Int): Pair<AnimeSeason, Int> =
+      when (season) {
+        AnimeSeason.WINTER -> AnimeSeason.SPRING to year
+        AnimeSeason.SPRING -> AnimeSeason.SUMMER to year
+        AnimeSeason.SUMMER -> AnimeSeason.FALL to year
+        AnimeSeason.FALL -> AnimeSeason.WINTER to year + 1
+      }
 
   fun normalizePickerState(state: SeasonPickerState): SeasonPickerState {
     val nowYear = Calendar.getInstance().get(Calendar.YEAR)

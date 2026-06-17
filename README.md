@@ -5,12 +5,13 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.8.26
+**Version:** 0.9.0
 
 ## Features
 
 - **Poster mode** (default) — large centered poster with Ken-Burns parallax; tap to **flip** and reveal full details; tap again to collapse
 - **Informative mode** — poster plus synopsis, genres, and actions side by side
+- **Calendar mode** — weekly airing grid (Mon–Sun or Sun–Sat): poster, title, and local air time per episode; swipe for other weeks; your list anime shown first
 - **Clock & weather** (poster mode) — time and date fixed at the bottom-left; optional current conditions from [Open-Meteo](https://open-meteo.com/) beside the date (°C/°F, city search or device location)
 - **Personal** — your AniList lists (watching, planning, completed, …); select multiple lists
 - **Full library** — browse the catalog with season, format, and sort filters
@@ -32,8 +33,19 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 | **Previous slide** | Swipe right or tap left edge |
 | **Settings** | Long-press center |
 | **More info** (poster mode) | Tap the poster — 3D flip to detail layout; tap again to collapse |
+| **Other weeks** (calendar mode) | Swipe left/right or tap screen edges |
 
-On first launch, subtle on-screen hints walk through swipe, hold-for-settings, and tap-poster. They fade away after you try each gesture or after a short pause.
+On first launch, subtle on-screen hints walk through swipe, hold-for-settings, and (in poster mode) tap-poster. They fade away after you try each gesture or after a short pause.
+
+### Calendar mode
+
+- Seven columns for the current week (starts **Monday** by default; switch to **Sunday** in Settings).
+- Header shows month/year; each column shows day number and weekday.
+- Up to ~3.5 episode rows visible; scroll down for more in that week.
+- Episodes show cover, title, episode number, and **local** air time (e.g. 8:00 PM).
+- **Personal** source: only anime on your selected lists. **Full library**: all airing anime matching filters.
+- Season scope: **this season + the next 3** (four seasons total). Format and sort still apply; list anime are prioritized.
+- Swipe or tap edges to move to previous/next week (no auto-advance timer).
 
 ### Clock & weather behavior
 

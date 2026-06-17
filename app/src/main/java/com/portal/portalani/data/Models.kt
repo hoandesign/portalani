@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit
 enum class FrameMode {
   INFORMATIVE,
   POSTER_ONLY,
+  CALENDAR,
 }
 
 enum class ListStatus(val apiValue: String) {
@@ -193,6 +194,7 @@ data class AppSettings(
     val weatherLat: Double? = null,
     val weatherLon: Double? = null,
     val weatherPlace: String? = null,
+    val weekStart: WeekStart = WeekStart.MONDAY,
     val powerMode: PowerMode = PowerMode.ALWAYS_ON,
     val idleSleepMinutes: Int = PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES,
     val sleepStartMinutes: Int = PowerPolicy.DEFAULT_SLEEP_START_MINUTES,
@@ -214,6 +216,11 @@ data class AppSettings(
                     .joinToString("_") { it.name }
         SourceMode.LIBRARY -> "library_${formatFilter.name}_${librarySort.name}_$seasonKey"
       }
+
+  fun calendarCacheKey(weekStartEpochDay: Long): String =
+      "calendar_${sourceMode.name}_${formatFilter.name}_${librarySort.name}_" +
+          listStatuses.sortedBy { it.ordinal }.joinToString("_") { it.name } +
+          "_$weekStartEpochDay"
 }
 
 data class ViewerProfile(
