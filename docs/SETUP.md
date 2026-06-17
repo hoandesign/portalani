@@ -242,7 +242,7 @@ If it does not:
 | Lists | Which AniList lists to show (Personal mode); select multiple |
 | Format / Sort / Season | Catalog filters (Full library mode) |
 | Hide Hentai genre | Hides anime tagged Hentai on AniList from slideshow and calendar (default on) |
-| Show clock | Time and date overlay in poster mode (bottom-left) |
+| Show clock | Time and date on screen — bottom-left in poster mode, top-right (smaller) in informative mode |
 | Show weather | Current temp and icon beside the date; uses [Open-Meteo](https://open-meteo.com/), no API key |
 | Temperature | Celsius or Fahrenheit |
 | Location | City search or **Use my location**; stored on device for refresh |
@@ -280,7 +280,13 @@ Sign-in is required for **Personal** calendar; **Full library** works without si
 4. Pick **Use my location** (Portal will ask for location permission once) or search for a city and choose a match.
 5. Set **Temperature** to °C or °F if needed.
 
-The clock stays fixed while you swipe slides. It hides automatically when you flip a poster open for details, then fades back when you collapse.
+The clock stays fixed while you swipe slides.
+
+| Frame mode | Where the clock appears | Notes |
+|------------|-------------------------|--------|
+| Poster | Bottom-left (large) | Hides while poster detail is open |
+| Informative | Top-right (compact) | Stays visible while browsing slides |
+| Calendar | Off | Use poster or informative for clock |
 
 Weather needs network access (`INTERNET`). Location permission is optional and only requested when you tap **Use my location**.
 

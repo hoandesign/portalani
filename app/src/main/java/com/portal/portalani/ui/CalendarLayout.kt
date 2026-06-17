@@ -23,7 +23,8 @@ object CalendarLayout {
   val DayHeaderBottomSpacing = 8.dp
   val GridVerticalPadding = 6.dp
 
-  /** Poster placeholder count per weekday column in loading skeleton (Sun–Sat). */
+  /** Gap between episode label and title (must be in code — trailing spaces in strings.xml are stripped). */
+  const val EpisodeTitleSeparator = "  "
   val SkeletonPosterCountsPerColumn = listOf(2, 3, 2, 1, 2, 3, 2)
 
   val screenPadding =

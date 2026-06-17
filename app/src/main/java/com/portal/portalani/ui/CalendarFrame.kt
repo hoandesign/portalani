@@ -654,6 +654,7 @@ private fun CalendarAiringCard(
                 ) {
                   append(stringResource(R.string.calendar_episode_prefix, entry.episode))
                 }
+                append(CalendarLayout.EpisodeTitleSeparator)
                 withStyle(
                     SpanStyle(
                         color = PortalAniColors.TextPrimary,

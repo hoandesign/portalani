@@ -601,17 +601,26 @@ private fun SlideshowScreen(
       )
     }
 
-    if (
-        frameMode == FrameMode.POSTER_ONLY &&
-            showPosterClock &&
-            trailerYoutubeId == null
-    ) {
-      AnimatedPosterClock(
-          visible = !posterExpanded,
-          showWeather = showWeather,
-          weather = weather,
-          modifier = Modifier.align(Alignment.BottomStart),
-      )
+    if (showPosterClock && trailerYoutubeId == null) {
+      when (frameMode) {
+        FrameMode.POSTER_ONLY ->
+            AnimatedPosterClock(
+                visible = !posterExpanded,
+                showWeather = showWeather,
+                weather = weather,
+                variant = ClockOverlayVariant.Poster,
+                modifier = Modifier.align(Alignment.BottomStart),
+            )
+        FrameMode.INFORMATIVE ->
+            AnimatedPosterClock(
+                visible = true,
+                showWeather = showWeather,
+                weather = weather,
+                variant = ClockOverlayVariant.Informative,
+                modifier = Modifier.align(Alignment.TopEnd),
+            )
+        FrameMode.CALENDAR -> Unit
+      }
     }
 
     SlideshowGuideOverlay(

@@ -27,14 +27,14 @@
     <string name="calendar_empty_week">No episodes this week for your filters.</string>
     <string name="calendar_swipe_hint">Swipe or tap screen edges for other weeks</string>
     <string name="calendar_episode_time">%1$s</string>
-    <string name="calendar_episode_prefix">Ep %1$d ·  </string>
+    <string name="calendar_episode_prefix">Ep %1$d ·</string>
     <string name="calendar_today">Today</string>
     <string name="calendar_loading_detail">Loading details…</string>
     <string name="calendar_season_window">This season + next 3</string>
     <string name="guide_swipe_week">Swipe for other weeks</string>
     <string name="show_poster_clock">Show clock</string>
     <string name="show_weather">Show weather</string>
-    <string name="weather_hint">Current conditions beside the date</string>
+    <string name="weather_hint">Poster: bottom-left. Informative: top-right (compact).</string>
     <string name="weather_temperature_unit">Temperature</string>
     <string name="weather_celsius">Celsius (°C)</string>
     <string name="weather_fahrenheit">Fahrenheit (°F)</string>

@@ -5,14 +5,14 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.9.25
+**Version:** 0.9.27
 
 ## Features
 
 - **Poster mode** (default) — large centered poster with Ken-Burns parallax; tap to **flip** and reveal full details; long-press poster or center for settings
-- **Informative mode** — poster plus synopsis, genres, rankings, and actions side by side
+- **Informative mode** — poster plus synopsis, genres, rankings, and actions side by side; optional compact clock and weather at the top-right
 - **Calendar mode** — weekly airing grid (Mon–Sun or Sun–Sat): cover, episode label, English title, and local air time; swipe or tap edges for other weeks; tap a poster for animated detail; list anime prioritized
-- **Clock & weather** (poster mode) — time and date fixed at the bottom-left; optional current conditions from [Open-Meteo](https://open-meteo.com/) beside the date (°C/°F, city search or device location)
+- **Clock & weather** — optional time, date, and current conditions from [Open-Meteo](https://open-meteo.com/) (°C/°F, city search or device location). **Poster mode:** large overlay at bottom-left. **Informative mode:** smaller overlay at top-right. Hidden while poster detail is open.
 - **Personal** — your AniList lists (watching, planning, completed, …); select multiple lists
 - **Full library** — browse the catalog with season, format, and sort filters
 - **Hide Hentai genre** — optional content filter (on by default) for slideshow and calendar
@@ -43,7 +43,7 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - Seven columns for the current week (starts **Monday** by default; switch to **Sunday** in Settings).
 - Header shows month/year (from the week’s Monday); **Today** jumps back to the current week.
 - Posters use a fixed **460 × 610** portrait ratio everywhere (calendar, poster, informative modes).
-- Episode line shows **Ep N ·  Title** with local air time below (e.g. `8:00 PM`).
+- Episode line shows **Ep N ·  Title** (spaced after the dot) with local air time below (e.g. `8:00 PM`).
 - Swipe down on the week grid to scroll tall days together.
 - **Personal** source: only anime on your selected lists. **Full library**: all airing anime matching filters.
 - Season scope: **this season + the next 3** (four seasons total). Format and sort still apply; list anime are prioritized.
@@ -52,8 +52,14 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 
 ### Clock & weather behavior
 
-- Clock and weather appear only in **poster mode** (hidden in informative mode and while poster detail is open).
-- **Settings → Clock & weather** — toggle clock, weather, temperature unit, and location.
+| Frame mode | Clock position | Size |
+|------------|----------------|------|
+| **Poster** | Bottom-left | Large (time 48sp) |
+| **Informative** | Top-right | Compact (time 30sp) |
+| **Calendar** | Hidden | — |
+
+- Toggle in **Settings → Clock & weather** — same **Show clock** / **Show weather** switches for poster and informative modes.
+- Poster mode hides the clock while the poster detail flip is open; informative mode keeps it visible.
 - Weather needs a location: **Use my location** (one-time permission) or search for a city.
 - Weather data refreshes periodically while the app is running; no API key required.
 
