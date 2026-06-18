@@ -25,6 +25,8 @@ android {
     versionCode = 83
     versionName = "0.10.0"
 
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
     buildConfigField("String", "ANILIST_CLIENT_ID", "\"$anilistClientId\"")
     buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"$anilistClientSecret\"")
     buildConfigField("String", "ANILIST_REDIRECT_URI", "\"portalani://callback\"")
@@ -100,6 +102,7 @@ dependencies {
   testImplementation("org.json:json:20240303")
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+  androidTestImplementation(libs.androidx.activity.compose)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(libs.androidx.junit)
   debugImplementation(libs.androidx.compose.ui.test.manifest)

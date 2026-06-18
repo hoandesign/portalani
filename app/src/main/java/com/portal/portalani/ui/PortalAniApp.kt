@@ -40,6 +40,7 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -325,7 +326,7 @@ private fun ErrorScreen(
       PortalPrimaryButton(
           text = stringResource(R.string.open_settings),
           onClick = onOpenSettings,
-          modifier = Modifier.width(320.dp),
+          modifier = Modifier.width(320.dp).testTag(PortalTestTags.OPEN_SETTINGS),
       )
       Spacer(Modifier.height(16.dp))
       PortalSecondaryButton(
@@ -873,6 +874,7 @@ private fun SettingsPanel(
             Modifier.padding(horizontal = 48.dp, vertical = 52.dp)
                 .fillMaxWidth()
                 .widthIn(max = 720.dp)
+                .testTag(PortalTestTags.SETTINGS_SHEET)
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
                 .clickable(
@@ -1453,6 +1455,7 @@ private fun CatalogFilterSettingsRows(
       label = stringResource(R.string.format_filter),
       value = formatFiltersSettingLabel(settings.formatFilters),
       onClick = onFormatClick,
+      modifier = Modifier.testTag(PortalTestTags.FORMAT_FILTER_ROW),
   )
   PortalSettingsDivider()
   PortalSettingsRow(
