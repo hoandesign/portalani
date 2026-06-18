@@ -31,6 +31,9 @@ data class CalendarAiringEntry(
     /** Unix timestamp (seconds) when the episode airs. */
     val airingAt: Int,
     val format: String?,
+    val countryOfOrigin: String? = null,
+    val source: String? = null,
+    val tags: List<String> = emptyList(),
     val season: String?,
     val seasonYear: Int?,
     val startDateYear: Int? = null,
@@ -104,6 +107,9 @@ fun CalendarAiringEntry.toPlaceholderSlide(): AnimeSlide =
         startDateMonth = startDateMonth,
         startDateDay = startDateDay,
         format = format,
+        countryOfOrigin = countryOfOrigin,
+        source = source,
+        tags = tags,
         studio = null,
         genres = genres,
         description = null,
@@ -142,10 +148,11 @@ object CalendarWeek {
   fun dayOfWeekLabel(date: LocalDate, locale: Locale = Locale.getDefault()): String =
       date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
 
-  fun matchesFormat(entry: CalendarAiringEntry, filter: FormatFilter): Boolean {
-    val api = filter.apiValue ?: return true
-    return entry.format.equals(api, ignoreCase = true)
-  }
+  fun matchesFormat(entry: CalendarAiringEntry, formats: Set<FormatFilter>): Boolean =
+      formats.matchesMediaFormat(entry.format)
+
+  fun matchesContentFilters(entry: CalendarAiringEntry, filters: LibraryFilters): Boolean =
+      filters.matchesCalendarEntry(entry)
 
   fun matchesHideHentai(entry: CalendarAiringEntry, hideHentai: Boolean): Boolean =
       !hideHentai || !entry.genres.containsHentaiGenre()

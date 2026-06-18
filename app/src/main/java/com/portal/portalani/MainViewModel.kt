@@ -20,7 +20,10 @@ import com.portal.portalani.data.CalendarAiringEntry
 import com.portal.portalani.data.CalendarWeek
 import com.portal.portalani.data.CalendarWeekCache
 import com.portal.portalani.data.FetchBatchResult
+import com.portal.portalani.data.CountryFilter
+import com.portal.portalani.data.DemographicFilter
 import com.portal.portalani.data.FormatFilter
+import com.portal.portalani.data.SourceFilter
 import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
@@ -588,9 +591,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
   }
 
-  fun setFormatFilter(filter: FormatFilter) {
+  fun setFormatFilters(formats: Set<FormatFilter>) {
+    if (formats.isEmpty()) return
+    applyContentFilterChange { it.copy(formatFilters = FormatFilter.normalizeSelection(formats)) }
+  }
+
+  fun setCountryFilters(countries: Set<CountryFilter>) {
+    if (countries.isEmpty()) return
+    applyContentFilterChange { it.copy(countryFilters = CountryFilter.normalizeSelection(countries)) }
+  }
+
+  fun setSourceFilters(sources: Set<SourceFilter>) {
+    if (sources.isEmpty()) return
+    applyContentFilterChange { it.copy(sourceFilters = SourceFilter.normalizeSelection(sources)) }
+  }
+
+  fun setDemographicFilters(demographics: Set<DemographicFilter>) {
+    if (demographics.isEmpty()) return
+    applyContentFilterChange {
+      it.copy(demographicFilters = DemographicFilter.normalizeSelection(demographics))
+    }
+  }
+
+  private fun applyContentFilterChange(transform: (AppSettings) -> AppSettings) {
     val calendar = _settings.value.frameMode == FrameMode.CALENDAR
-    updateSettings(_settings.value.copy(formatFilter = filter))
+    updateSettings(transform(_settings.value))
     if (calendar) {
       clearCalendarMemoryCache()
       navigateToCalendarWeek()
@@ -804,8 +829,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
       val filtered =
           raw
               .asSequence()
-              .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
-              .filter { CalendarWeek.matchesHideHentai(it, settings.hideHentai) }
+              .filter { CalendarWeek.matchesContentFilters(it, settings.libraryFilters()) }
               .filter { entry ->
                 if (settings.sourceMode != SourceMode.PERSONAL) {
                   true
@@ -897,8 +921,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val filtered =
         raw
             .asSequence()
-            .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
-            .filter { CalendarWeek.matchesHideHentai(it, settings.hideHentai) }
+            .filter { CalendarWeek.matchesContentFilters(it, settings.libraryFilters()) }
             .filter { entry ->
               if (settings.sourceMode != SourceMode.PERSONAL) {
                 true
@@ -969,7 +992,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                   )
             }
           }
-      val slides = batch?.slides.orEmpty().let { filterSlidesForSettings(it, settings) }
+      val rawSlides = batch?.slides.orEmpty()
+      val slides = filterSlidesForSettings(rawSlides, settings)
       if (slides.isEmpty()) {
         if (cachedStale != null) {
           _state.value = showingState(cachedStale, fromCache = true)
@@ -985,7 +1009,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } else {
           val message =
               if (settings.sourceMode == SourceMode.PERSONAL) {
-                personalListEmptyMessage(settings.listStatuses)
+                personalListEmptyMessage(settings.listStatuses, filtersExcludedAll = rawSlides.isNotEmpty())
               } else {
                 "No anime found for these filters. Try broader filters in Settings."
               }
@@ -1052,8 +1076,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         feedNextPage = batch.nextPage
         feedHasMore = batch.hasMore
-        if (batch.slides.isNotEmpty()) {
-          appendSlides(batch.slides)
+        val filtered = filterSlidesForSettings(batch.slides, settings)
+        if (filtered.isNotEmpty()) {
+          appendSlides(filtered)
           persistCurrentSlides()
         }
       } catch (_: Exception) {
@@ -1145,7 +1170,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ctx.startActivity(intent)
   }
 
-  private fun personalListEmptyMessage(statuses: Set<ListStatus>): String {
+  private fun personalListEmptyMessage(statuses: Set<ListStatus>, filtersExcludedAll: Boolean = false): String {
+    if (filtersExcludedAll) {
+      return "Nothing on your lists matches the current filters. Try broader filters in Settings, or switch to Full library."
+    }
     if (statuses.isEmpty()) {
       return "Choose at least one list in Settings."
     }

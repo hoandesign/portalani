@@ -68,6 +68,9 @@ private fun CalendarAiringEntry.toJson(): JSONObject =
         .put("episode", episode)
         .put("airingAt", airingAt)
         .put("format", format)
+        .put("countryOfOrigin", countryOfOrigin)
+        .put("source", source)
+        .put("tags", JSONArray(tags))
         .put("season", season)
         .put("seasonYear", seasonYear ?: JSONObject.NULL)
         .put("startDateYear", startDateYear ?: JSONObject.NULL)
@@ -90,6 +93,12 @@ private fun JSONObject.toCalendarAiringEntry(): CalendarAiringEntry? {
       arr.optString(i).takeIf { it.isNotBlank() }?.let { genres += it }
     }
   }
+  val tags = mutableListOf<String>()
+  optJSONArray("tags")?.let { arr ->
+    for (i in 0 until arr.length()) {
+      arr.optString(i).takeIf { it.isNotBlank() }?.let { tags += it }
+    }
+  }
   return CalendarAiringEntry(
       scheduleId = optInt("scheduleId"),
       mediaId = optInt("mediaId"),
@@ -98,6 +107,9 @@ private fun JSONObject.toCalendarAiringEntry(): CalendarAiringEntry? {
       episode = episode,
       airingAt = airingAt,
       format = optString("format").takeIf { it.isNotBlank() && it != "null" },
+      countryOfOrigin = optString("countryOfOrigin").takeIf { it.isNotBlank() && it != "null" },
+      source = optString("source").takeIf { it.isNotBlank() && it != "null" },
+      tags = tags,
       season = optString("season").takeIf { it.isNotBlank() && it != "null" },
       seasonYear = optInt("seasonYear").takeIf { it > 0 },
       startDateYear = optInt("startDateYear").takeIf { it > 0 },

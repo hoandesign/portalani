@@ -44,7 +44,12 @@ class AniListClient(private val http: OkHttpClient) {
             .put("page", page)
             .put("perPage", perPage)
             .put("sort", JSONArray().put(filters.sort.apiSort))
-    filters.format.apiValue?.let { variables.put("format", JSONArray().put(it)) }
+    filters.formatApiValues()?.let { values ->
+      variables.put("format", JSONArray(values))
+    }
+    filters.sourceApiValues()?.let { values ->
+      variables.put("source", JSONArray(values))
+    }
     if (filters.hideHentai) {
       variables.put("genre_not_in", JSONArray().put(HENTAI_GENRE))
     }
@@ -143,6 +148,7 @@ class AniListClient(private val http: OkHttpClient) {
         arr.optString(i).takeIf { it.isNotBlank() }?.let { genres += it }
       }
     }
+    val tags = parseTagNames(media)
     return CalendarAiringEntry(
         scheduleId = node.getInt("id"),
         mediaId = media.getInt("id"),
@@ -151,6 +157,9 @@ class AniListClient(private val http: OkHttpClient) {
         episode = node.optInt("episode").takeIf { it > 0 } ?: return null,
         airingAt = node.optInt("airingAt").takeIf { it > 0 } ?: return null,
         format = media.optString("format").takeIf { it.isNotBlank() && it != "null" },
+        countryOfOrigin = media.optString("countryOfOrigin").takeIf { it.isNotBlank() && it != "null" },
+        source = media.optString("source").takeIf { it.isNotBlank() && it != "null" },
+        tags = tags,
         season = media.optString("season").takeIf { it.isNotBlank() && it != "null" },
         seasonYear = media.optInt("seasonYear").takeIf { it > 0 },
         startDateYear = startDate?.optInt("year")?.takeIf { it > 0 },
@@ -314,6 +323,7 @@ class AniListClient(private val http: OkHttpClient) {
         arr.optString(i).takeIf { it.isNotBlank() }?.let { genres += it }
       }
     }
+    val tags = parseTagNames(media)
 
     val rankings = parseRankings(media)
     val id = media.getInt("id")
@@ -341,6 +351,9 @@ class AniListClient(private val http: OkHttpClient) {
         startDateMonth = startDate?.optInt("month")?.takeIf { it > 0 },
         startDateDay = startDate?.optInt("day")?.takeIf { it > 0 },
         format = media.optString("format").takeIf { it.isNotBlank() && it != "null" },
+        countryOfOrigin = media.optString("countryOfOrigin").takeIf { it.isNotBlank() && it != "null" },
+        source = media.optString("source").takeIf { it.isNotBlank() && it != "null" },
+        tags = tags,
         studio = studio,
         genres = genres,
         description = cleanDescription(media.optString("description")),
@@ -355,6 +368,15 @@ class AniListClient(private val http: OkHttpClient) {
         nextAiringEpisode = nextAiring?.optInt("episode")?.takeIf { it > 0 },
         nextAiringAt = nextAiring?.optInt("airingAt")?.takeIf { it > 0 },
     )
+  }
+
+  private fun parseTagNames(media: JSONObject): List<String> {
+    val tags = media.optJSONArray("tags") ?: return emptyList()
+    val names = mutableListOf<String>()
+    for (i in 0 until tags.length()) {
+      tags.optJSONObject(i)?.optString("name")?.takeIf { it.isNotBlank() }?.let { names += it }
+    }
+    return names
   }
 
   private fun parseMainStudio(media: JSONObject): String? {
@@ -481,6 +503,11 @@ class AniListClient(private val http: OkHttpClient) {
         seasonYear
         startDate { year month day }
         format
+        countryOfOrigin
+        source
+        tags {
+          name
+        }
         genres
         studios(isMain: true) {
           nodes {
@@ -547,6 +574,7 @@ class AniListClient(private val http: OkHttpClient) {
           ${'$'}page: Int,
           ${'$'}perPage: Int,
           ${'$'}format: [MediaFormat],
+          ${'$'}source: [MediaSource],
           ${'$'}season: MediaSeason,
           ${'$'}seasonYear: Int,
           ${'$'}startDate_greater: FuzzyDateInt,
@@ -559,6 +587,7 @@ class AniListClient(private val http: OkHttpClient) {
               type: ANIME
               isAdult: false
               format_in: ${'$'}format
+              source_in: ${'$'}source
               season: ${'$'}season
               seasonYear: ${'$'}seasonYear
               startDate_greater: ${'$'}startDate_greater
@@ -579,6 +608,7 @@ class AniListClient(private val http: OkHttpClient) {
           ${'$'}page: Int,
           ${'$'}perPage: Int,
           ${'$'}format: [MediaFormat],
+          ${'$'}source: [MediaSource],
           ${'$'}season: MediaSeason,
           ${'$'}seasonYear: Int,
           ${'$'}startDate_greater: FuzzyDateInt,
@@ -591,6 +621,7 @@ class AniListClient(private val http: OkHttpClient) {
               type: ANIME
               isAdult: false
               format_in: ${'$'}format
+              source_in: ${'$'}source
               season: ${'$'}season
               seasonYear: ${'$'}seasonYear
               startDate_greater: ${'$'}startDate_greater
@@ -640,6 +671,11 @@ class AniListClient(private val http: OkHttpClient) {
         title { romaji english }
         coverImage { extraLarge large medium }
         format
+        countryOfOrigin
+        source
+        tags {
+          name
+        }
         season
         seasonYear
         startDate { year month day }

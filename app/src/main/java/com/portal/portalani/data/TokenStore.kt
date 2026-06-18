@@ -88,13 +88,27 @@ class SettingsStore(context: Context) {
         } else {
           null
         }
+    val formatFilters =
+        if (prefs.contains(KEY_FORMAT_FILTERS)) {
+          FormatFilter.decodeSelection(prefs.getString(KEY_FORMAT_FILTERS, null))
+        } else {
+          FormatFilter.fromLegacy(
+              FormatFilter.valueOf(prefs.getString(KEY_FORMAT_FILTER, FormatFilter.ALL.name)!!),
+          )
+        }
+    val countryFilters = CountryFilter.decodeSelection(prefs.getString(KEY_COUNTRY_FILTERS, null))
+    val sourceFilters = SourceFilter.decodeSelection(prefs.getString(KEY_SOURCE_FILTERS, null))
+    val demographicFilters =
+        DemographicFilter.decodeSelection(prefs.getString(KEY_DEMOGRAPHIC_FILTERS, null))
     return AppSettings(
         shuffle = prefs.getBoolean(KEY_SHUFFLE, true),
         intervalMs = prefs.getLong(KEY_INTERVAL_MS, 12_000L),
         sourceMode = sourceMode,
         listStatuses = listStatuses,
-        formatFilter =
-            FormatFilter.valueOf(prefs.getString(KEY_FORMAT_FILTER, FormatFilter.ALL.name)!!),
+        formatFilters = formatFilters,
+        countryFilters = countryFilters,
+        sourceFilters = sourceFilters,
+        demographicFilters = demographicFilters,
         librarySort =
             LibrarySort.valueOf(prefs.getString(KEY_LIBRARY_SORT, LibrarySort.POPULARITY.name)!!),
         seasonKey = prefs.getString(KEY_SEASON_KEY, SeasonSelection.ANY_KEY)!!,
@@ -144,7 +158,10 @@ class SettingsStore(context: Context) {
           KEY_LIST_STATUSES,
           settings.listStatuses.sortedBy { it.ordinal }.joinToString(",") { it.name },
       )
-      putString(KEY_FORMAT_FILTER, settings.formatFilter.name)
+      putString(KEY_FORMAT_FILTERS, FormatFilter.encodeSelection(settings.formatFilters))
+      putString(KEY_COUNTRY_FILTERS, CountryFilter.encodeSelection(settings.countryFilters))
+      putString(KEY_SOURCE_FILTERS, SourceFilter.encodeSelection(settings.sourceFilters))
+      putString(KEY_DEMOGRAPHIC_FILTERS, DemographicFilter.encodeSelection(settings.demographicFilters))
       putString(KEY_LIBRARY_SORT, settings.librarySort.name)
       putString(KEY_SEASON_KEY, settings.seasonKey)
       putString(KEY_FRAME_MODE, settings.frameMode.name)
@@ -178,6 +195,10 @@ class SettingsStore(context: Context) {
     private const val KEY_LIST_STATUS = "list_status"
     private const val KEY_LIST_STATUSES = "list_statuses"
     private const val KEY_FORMAT_FILTER = "format_filter"
+    private const val KEY_FORMAT_FILTERS = "format_filters"
+    private const val KEY_COUNTRY_FILTERS = "country_filters"
+    private const val KEY_SOURCE_FILTERS = "source_filters"
+    private const val KEY_DEMOGRAPHIC_FILTERS = "demographic_filters"
     private const val KEY_LIBRARY_SORT = "library_sort"
     private const val KEY_SEASON_KEY = "season_key"
     private const val KEY_FRAME_MODE = "frame_mode"

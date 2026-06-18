@@ -22,8 +22,8 @@ android {
     applicationId = "com.portal.portalani"
     minSdk = 28
     targetSdk = 29
-    versionCode = 78
-    versionName = "0.9.30"
+    versionCode = 81
+    versionName = "0.9.33"
 
     buildConfigField("String", "ANILIST_CLIENT_ID", "\"$anilistClientId\"")
     buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"$anilistClientSecret\"")

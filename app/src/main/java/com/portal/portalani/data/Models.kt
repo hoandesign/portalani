@@ -71,6 +71,9 @@ data class AnimeSlide(
     val startDateMonth: Int? = null,
     val startDateDay: Int? = null,
     val format: String?,
+    val countryOfOrigin: String? = null,
+    val source: String? = null,
+    val tags: List<String> = emptyList(),
     val studio: String?,
     val genres: List<String>,
     val description: String?,
@@ -184,7 +187,10 @@ data class AppSettings(
     val intervalMs: Long = 12_000L,
     val sourceMode: SourceMode = SourceMode.LIBRARY,
     val listStatuses: Set<ListStatus> = setOf(ListStatus.CURRENT),
-    val formatFilter: FormatFilter = FormatFilter.ALL,
+    val formatFilters: Set<FormatFilter> = FormatFilter.defaultSelection(),
+    val countryFilters: Set<CountryFilter> = CountryFilter.defaultSelection(),
+    val sourceFilters: Set<SourceFilter> = SourceFilter.defaultSelection(),
+    val demographicFilters: Set<DemographicFilter> = DemographicFilter.defaultSelection(),
     val librarySort: LibrarySort = LibrarySort.POPULARITY,
     val seasonKey: String = SeasonSelection.ANY_KEY,
     val frameMode: FrameMode = FrameMode.POSTER_ONLY,
@@ -203,11 +209,21 @@ data class AppSettings(
 ) {
   fun libraryFilters(): LibraryFilters =
       LibraryFilters(
-          format = formatFilter,
+          formats = formatFilters,
+          countries = countryFilters,
+          sources = sourceFilters,
+          demographics = demographicFilters,
           sort = librarySort,
           seasonKey = seasonKey,
           hideHentai = hideHentai,
       )
+
+  private fun formatCacheToken(): String = FormatFilter.encodeSelection(formatFilters)
+
+  private fun contentFilterCacheToken(): String =
+      "${formatCacheToken()}_${CountryFilter.encodeSelection(countryFilters)}_" +
+          "${SourceFilter.encodeSelection(sourceFilters)}_" +
+          DemographicFilter.encodeSelection(demographicFilters)
 
   fun cacheKey(): String =
       when (sourceMode) {
@@ -216,13 +232,13 @@ data class AppSettings(
                 listStatuses
                     .sortedBy { it.ordinal }
                     .joinToString("_") { it.name } +
-                "_hentai${if (hideHentai) 1 else 0}"
+                "_${contentFilterCacheToken()}_hentai${if (hideHentai) 1 else 0}"
         SourceMode.LIBRARY ->
-            "library_${formatFilter.name}_${librarySort.name}_${seasonKey}_hentai${if (hideHentai) 1 else 0}"
+            "library_${contentFilterCacheToken()}_${librarySort.name}_${seasonKey}_hentai${if (hideHentai) 1 else 0}"
       }
 
   fun calendarCacheKey(weekStartEpochDay: Long): String =
-      "calendar_${sourceMode.name}_${formatFilter.name}_${librarySort.name}_" +
+      "calendar_${sourceMode.name}_${contentFilterCacheToken()}_${librarySort.name}_" +
           listStatuses.sortedBy { it.ordinal }.joinToString("_") { it.name } +
           "_hentai${if (hideHentai) 1 else 0}_$weekStartEpochDay"
 }

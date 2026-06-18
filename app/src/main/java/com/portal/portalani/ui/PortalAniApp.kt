@@ -55,7 +55,10 @@ import com.portal.portalani.CalendarWeekState
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.CalendarAiringEntry
+import com.portal.portalani.data.CountryFilter
+import com.portal.portalani.data.DemographicFilter
 import com.portal.portalani.data.FormatFilter
+import com.portal.portalani.data.SourceFilter
 import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.GeoPlace
 import com.portal.portalani.data.LibrarySort
@@ -110,7 +113,10 @@ fun PortalAniApp(
     onSetIntervalSeconds: (Int) -> Unit,
     onSetSourceMode: (SourceMode) -> Unit,
     onSetListStatuses: (Set<ListStatus>) -> Unit,
-    onSetFormatFilter: (FormatFilter) -> Unit,
+    onSetFormatFilters: (Set<FormatFilter>) -> Unit,
+    onSetCountryFilters: (Set<CountryFilter>) -> Unit,
+    onSetSourceFilters: (Set<SourceFilter>) -> Unit,
+    onSetDemographicFilters: (Set<DemographicFilter>) -> Unit,
     onSetHideHentai: (Boolean) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
@@ -227,7 +233,10 @@ fun PortalAniApp(
           onSetIntervalSeconds = onSetIntervalSeconds,
           onSetSourceMode = onSetSourceMode,
           onSetListStatuses = onSetListStatuses,
-          onSetFormatFilter = onSetFormatFilter,
+          onSetFormatFilters = onSetFormatFilters,
+          onSetCountryFilters = onSetCountryFilters,
+          onSetSourceFilters = onSetSourceFilters,
+          onSetDemographicFilters = onSetDemographicFilters,
           onSetHideHentai = onSetHideHentai,
           onSetLibrarySort = onSetLibrarySort,
           onSetSeasonKey = onSetSeasonKey,
@@ -730,7 +739,10 @@ private fun SettingsPanel(
     onSetIntervalSeconds: (Int) -> Unit,
     onSetSourceMode: (SourceMode) -> Unit,
     onSetListStatuses: (Set<ListStatus>) -> Unit,
-    onSetFormatFilter: (FormatFilter) -> Unit,
+    onSetFormatFilters: (Set<FormatFilter>) -> Unit,
+    onSetCountryFilters: (Set<CountryFilter>) -> Unit,
+    onSetSourceFilters: (Set<SourceFilter>) -> Unit,
+    onSetDemographicFilters: (Set<DemographicFilter>) -> Unit,
     onSetHideHentai: (Boolean) -> Unit,
     onSetLibrarySort: (LibrarySort) -> Unit,
     onSetSeasonKey: (String) -> Unit,
@@ -744,6 +756,9 @@ private fun SettingsPanel(
 ) {
   var statusMenuOpen by remember { mutableStateOf(false) }
   var formatMenuOpen by remember { mutableStateOf(false) }
+  var countryMenuOpen by remember { mutableStateOf(false) }
+  var sourceMaterialMenuOpen by remember { mutableStateOf(false) }
+  var demographicMenuOpen by remember { mutableStateOf(false) }
   var sortMenuOpen by remember { mutableStateOf(false) }
   var seasonMenuOpen by remember { mutableStateOf(false) }
   var sourceMenuOpen by remember { mutableStateOf(false) }
@@ -763,7 +778,6 @@ private fun SettingsPanel(
           "celsius" to stringResource(R.string.weather_celsius),
           "fahrenheit" to stringResource(R.string.weather_fahrenheit),
       )
-  val formatOptions = FormatFilter.entries.map { format -> format.name to format.label }
   val sortOptions = LibrarySort.entries.map { sort -> sort.name to sort.label }
   val sourceOptions =
       listOf(
@@ -795,6 +809,9 @@ private fun SettingsPanel(
   val anyMenuOpen =
       statusMenuOpen ||
           formatMenuOpen ||
+          countryMenuOpen ||
+          sourceMaterialMenuOpen ||
+          demographicMenuOpen ||
           sortMenuOpen ||
           seasonMenuOpen ||
           sourceMenuOpen ||
@@ -824,6 +841,9 @@ private fun SettingsPanel(
   BackHandler(enabled = anyMenuOpen) {
     statusMenuOpen = false
     formatMenuOpen = false
+    countryMenuOpen = false
+    sourceMaterialMenuOpen = false
+    demographicMenuOpen = false
     sortMenuOpen = false
     seasonMenuOpen = false
     sourceMenuOpen = false
@@ -1039,13 +1059,14 @@ private fun SettingsPanel(
               value = listStatusesSettingLabel(settings.listStatuses),
               onClick = { statusMenuOpen = true },
           )
+          CatalogFilterSettingsRows(
+              settings = settings,
+              onFormatClick = { formatMenuOpen = true },
+              onCountryClick = { countryMenuOpen = true },
+              onSourceMaterialClick = { sourceMaterialMenuOpen = true },
+              onDemographicClick = { demographicMenuOpen = true },
+          )
           if (settings.frameMode == FrameMode.CALENDAR) {
-            PortalSettingsDivider()
-            PortalSettingsRow(
-                label = stringResource(R.string.format_filter),
-                value = settings.formatFilter.label,
-                onClick = { formatMenuOpen = true },
-            )
             PortalSettingsDivider()
             PortalSettingsRow(
                 label = stringResource(R.string.sort_by),
@@ -1054,10 +1075,12 @@ private fun SettingsPanel(
             )
           }
         } else {
-          PortalSettingsRow(
-              label = stringResource(R.string.format_filter),
-              value = settings.formatFilter.label,
-              onClick = { formatMenuOpen = true },
+          CatalogFilterSettingsRows(
+              settings = settings,
+              onFormatClick = { formatMenuOpen = true },
+              onCountryClick = { countryMenuOpen = true },
+              onSourceMaterialClick = { sourceMaterialMenuOpen = true },
+              onDemographicClick = { demographicMenuOpen = true },
           )
           PortalSettingsDivider()
           PortalSettingsRow(
@@ -1310,12 +1333,46 @@ private fun SettingsPanel(
   }
 
   if (formatMenuOpen) {
-    PortalPickerDialog(
-        title = stringResource(R.string.format_filter),
-        options = formatOptions,
-        selectedKey = settings.formatFilter.name,
+    FormatFiltersDialog(
+        selected = settings.formatFilters,
         onDismiss = { formatMenuOpen = false },
-        onSelect = { key -> onSetFormatFilter(FormatFilter.valueOf(key)) },
+        onApply = { formats ->
+          onUserInteraction()
+          onSetFormatFilters(formats)
+        },
+    )
+  }
+
+  if (countryMenuOpen) {
+    CountryFiltersDialog(
+        selected = settings.countryFilters,
+        onDismiss = { countryMenuOpen = false },
+        onApply = { countries ->
+          onUserInteraction()
+          onSetCountryFilters(countries)
+        },
+    )
+  }
+
+  if (sourceMaterialMenuOpen) {
+    SourceFiltersDialog(
+        selected = settings.sourceFilters,
+        onDismiss = { sourceMaterialMenuOpen = false },
+        onApply = { sources ->
+          onUserInteraction()
+          onSetSourceFilters(sources)
+        },
+    )
+  }
+
+  if (demographicMenuOpen) {
+    DemographicFiltersDialog(
+        selected = settings.demographicFilters,
+        onDismiss = { demographicMenuOpen = false },
+        onApply = { demographics ->
+          onUserInteraction()
+          onSetDemographicFilters(demographics)
+        },
     )
   }
 
@@ -1381,6 +1438,40 @@ private fun SettingsPanel(
         },
     )
   }
+}
+
+@Composable
+private fun CatalogFilterSettingsRows(
+    settings: AppSettings,
+    onFormatClick: () -> Unit,
+    onCountryClick: () -> Unit,
+    onSourceMaterialClick: () -> Unit,
+    onDemographicClick: () -> Unit,
+) {
+  PortalSettingsDivider()
+  PortalSettingsRow(
+      label = stringResource(R.string.format_filter),
+      value = formatFiltersSettingLabel(settings.formatFilters),
+      onClick = onFormatClick,
+  )
+  PortalSettingsDivider()
+  PortalSettingsRow(
+      label = stringResource(R.string.country_filter),
+      value = countryFiltersSettingLabel(settings.countryFilters),
+      onClick = onCountryClick,
+  )
+  PortalSettingsDivider()
+  PortalSettingsRow(
+      label = stringResource(R.string.source_material_filter),
+      value = sourceFiltersSettingLabel(settings.sourceFilters),
+      onClick = onSourceMaterialClick,
+  )
+  PortalSettingsDivider()
+  PortalSettingsRow(
+      label = stringResource(R.string.demographic_filter),
+      value = demographicFiltersSettingLabel(settings.demographicFilters),
+      onClick = onDemographicClick,
+  )
 }
 
 private fun buildSlideOrder(ids: List<Int>, shuffle: Boolean, seed: Int): List<Int> =

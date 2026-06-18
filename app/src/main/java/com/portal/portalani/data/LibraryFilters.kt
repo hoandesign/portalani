@@ -16,6 +16,213 @@ enum class FormatFilter(val apiValue: String?, val label: String) {
   OVA("OVA", "OVA"),
   ONA("ONA", "ONA"),
   SPECIAL("SPECIAL", "Specials"),
+  ;
+
+  companion object {
+    val selectable: List<FormatFilter> = entries.filter { it != ALL }
+
+    fun defaultSelection(): Set<FormatFilter> = selectable.toSet()
+
+    fun normalizeSelection(selected: Set<FormatFilter>): Set<FormatFilter> {
+      val concrete = selected.filter { it != ALL }.toSet()
+      return if (concrete.isEmpty()) defaultSelection() else concrete
+    }
+
+    fun isAllSelected(selected: Set<FormatFilter>): Boolean =
+        normalizeSelection(selected).containsAll(selectable)
+
+    fun decodeSelection(raw: String?): Set<FormatFilter> {
+      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
+      val parsed =
+          raw.split(',')
+              .mapNotNull { token ->
+                token.trim().takeIf { it.isNotEmpty() }?.let {
+                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
+                }
+              }
+              .toSet()
+      return normalizeSelection(parsed)
+    }
+
+    fun encodeSelection(selected: Set<FormatFilter>): String =
+        if (isAllSelected(selected)) ALL.name
+        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+
+    /** Migrate a single-format preference from older builds. */
+    fun fromLegacy(single: FormatFilter): Set<FormatFilter> =
+        if (single == ALL) defaultSelection() else setOf(single)
+  }
+}
+
+fun Set<FormatFilter>.matchesMediaFormat(mediaFormat: String?): Boolean {
+  val normalized = FormatFilter.normalizeSelection(this)
+  if (FormatFilter.isAllSelected(normalized)) return true
+  val format = mediaFormat?.takeIf { it.isNotBlank() } ?: return false
+  return normalized.any { it.apiValue.equals(format, ignoreCase = true) }
+}
+
+/** ISO 3166-1 alpha-2 country codes from AniList `countryOfOrigin`. */
+enum class CountryFilter(val apiValue: String, val label: String) {
+  ALL("", "All countries"),
+  JP("JP", "Japan"),
+  CN("CN", "China"),
+  KR("KR", "South Korea"),
+  TW("TW", "Taiwan"),
+  US("US", "United States"),
+  TH("TH", "Thailand"),
+  FR("FR", "France"),
+  DE("DE", "Germany"),
+  GB("GB", "United Kingdom"),
+  IT("IT", "Italy"),
+  ES("ES", "Spain"),
+  ;
+
+  companion object {
+    val selectable: List<CountryFilter> = entries.filter { it != ALL }
+
+    fun defaultSelection(): Set<CountryFilter> = selectable.toSet()
+
+    fun normalizeSelection(selected: Set<CountryFilter>): Set<CountryFilter> {
+      val concrete = selected.filter { it != ALL }.toSet()
+      return if (concrete.isEmpty()) defaultSelection() else concrete
+    }
+
+    fun isAllSelected(selected: Set<CountryFilter>): Boolean =
+        normalizeSelection(selected).containsAll(selectable)
+
+    fun decodeSelection(raw: String?): Set<CountryFilter> {
+      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
+      val parsed =
+          raw.split(',')
+              .mapNotNull { token ->
+                token.trim().takeIf { it.isNotEmpty() }?.let {
+                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
+                }
+              }
+              .toSet()
+      return normalizeSelection(parsed)
+    }
+
+    fun encodeSelection(selected: Set<CountryFilter>): String =
+        if (isAllSelected(selected)) ALL.name
+        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+  }
+}
+
+fun Set<CountryFilter>.matchesMediaCountry(countryOfOrigin: String?): Boolean {
+  val normalized = CountryFilter.normalizeSelection(this)
+  if (CountryFilter.isAllSelected(normalized)) return true
+  val country = countryOfOrigin?.takeIf { it.isNotBlank() } ?: return false
+  return normalized.any { it.apiValue.equals(country, ignoreCase = true) }
+}
+
+/** Adaptation source from AniList `MediaSource`. */
+enum class SourceFilter(val apiValue: String, val label: String) {
+  ALL("", "All sources"),
+  ORIGINAL("ORIGINAL", "Original"),
+  MANGA("MANGA", "Manga"),
+  LIGHT_NOVEL("LIGHT_NOVEL", "Light novel"),
+  VISUAL_NOVEL("VISUAL_NOVEL", "Visual novel"),
+  VIDEO_GAME("VIDEO_GAME", "Video game"),
+  NOVEL("NOVEL", "Novel"),
+  WEB_NOVEL("WEB_NOVEL", "Web novel"),
+  ANIME("ANIME", "Anime"),
+  LIVE_ACTION("LIVE_ACTION", "Live action"),
+  DOUJINSHI("DOUJINSHI", "Doujinshi"),
+  COMIC("COMIC", "Comic"),
+  GAME("GAME", "Game"),
+  MULTIMEDIA_PROJECT("MULTIMEDIA_PROJECT", "Multimedia project"),
+  PICTURE_BOOK("PICTURE_BOOK", "Picture book"),
+  OTHER("OTHER", "Other"),
+  ;
+
+  companion object {
+    val selectable: List<SourceFilter> = entries.filter { it != ALL }
+
+    fun defaultSelection(): Set<SourceFilter> = selectable.toSet()
+
+    fun normalizeSelection(selected: Set<SourceFilter>): Set<SourceFilter> {
+      val concrete = selected.filter { it != ALL }.toSet()
+      return if (concrete.isEmpty()) defaultSelection() else concrete
+    }
+
+    fun isAllSelected(selected: Set<SourceFilter>): Boolean =
+        normalizeSelection(selected).containsAll(selectable)
+
+    fun decodeSelection(raw: String?): Set<SourceFilter> {
+      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
+      val parsed =
+          raw.split(',')
+              .mapNotNull { token ->
+                token.trim().takeIf { it.isNotEmpty() }?.let {
+                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
+                }
+              }
+              .toSet()
+      return normalizeSelection(parsed)
+    }
+
+    fun encodeSelection(selected: Set<SourceFilter>): String =
+        if (isAllSelected(selected)) ALL.name
+        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+  }
+}
+
+fun Set<SourceFilter>.matchesMediaSource(source: String?): Boolean {
+  val normalized = SourceFilter.normalizeSelection(this)
+  if (SourceFilter.isAllSelected(normalized)) return true
+  val value = source?.takeIf { it.isNotBlank() } ?: return false
+  return normalized.any { it.apiValue.equals(value, ignoreCase = true) }
+}
+
+/** Demographic audience tags from AniList (tag category Demographic). */
+enum class DemographicFilter(val tagName: String, val label: String) {
+  ALL("", "All demographics"),
+  SHOUNEN("Shounen", "Shounen"),
+  SHOUJO("Shoujo", "Shoujo"),
+  SEINEN("Seinen", "Seinen"),
+  JOSEI("Josei", "Josei"),
+  KIDS("Kids", "Kids"),
+  ;
+
+  companion object {
+    val selectable: List<DemographicFilter> = entries.filter { it != ALL }
+
+    fun defaultSelection(): Set<DemographicFilter> = selectable.toSet()
+
+    fun normalizeSelection(selected: Set<DemographicFilter>): Set<DemographicFilter> {
+      val concrete = selected.filter { it != ALL }.toSet()
+      return if (concrete.isEmpty()) defaultSelection() else concrete
+    }
+
+    fun isAllSelected(selected: Set<DemographicFilter>): Boolean =
+        normalizeSelection(selected).containsAll(selectable)
+
+    fun decodeSelection(raw: String?): Set<DemographicFilter> {
+      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
+      val parsed =
+          raw.split(',')
+              .mapNotNull { token ->
+                token.trim().takeIf { it.isNotEmpty() }?.let {
+                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
+                }
+              }
+              .toSet()
+      return normalizeSelection(parsed)
+    }
+
+    fun encodeSelection(selected: Set<DemographicFilter>): String =
+        if (isAllSelected(selected)) ALL.name
+        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+  }
+}
+
+fun Set<DemographicFilter>.matchesMediaTags(tags: List<String>): Boolean {
+  val normalized = DemographicFilter.normalizeSelection(this)
+  if (DemographicFilter.isAllSelected(normalized)) return true
+  if (tags.isEmpty()) return false
+  val tagNames = tags.map { it.lowercase() }.toSet()
+  return normalized.any { demo -> demo.tagName.lowercase() in tagNames }
 }
 
 enum class LibrarySort(val apiSort: String, val label: String) {
@@ -46,16 +253,47 @@ data class LibrarySeasonParams(
 }
 
 data class LibraryFilters(
-    val format: FormatFilter = FormatFilter.ALL,
+    val formats: Set<FormatFilter> = FormatFilter.defaultSelection(),
+    val countries: Set<CountryFilter> = CountryFilter.defaultSelection(),
+    val sources: Set<SourceFilter> = SourceFilter.defaultSelection(),
+    val demographics: Set<DemographicFilter> = DemographicFilter.defaultSelection(),
     val sort: LibrarySort = LibrarySort.POPULARITY,
     val seasonKey: String = SeasonSelection.ANY_KEY,
     val hideHentai: Boolean = true,
 ) {
   fun resolvedSeason(): LibrarySeasonParams = SeasonSelection.resolve(seasonKey)
 
+  fun formatApiValues(): List<String>? {
+    if (FormatFilter.isAllSelected(formats)) return null
+    return FormatFilter.normalizeSelection(formats).mapNotNull { it.apiValue }
+  }
+
+  fun sourceApiValues(): List<String>? {
+    if (SourceFilter.isAllSelected(sources)) return null
+    return SourceFilter.normalizeSelection(sources).map { it.apiValue }
+  }
+
+  fun demographicTagApiValues(): List<String>? {
+    if (DemographicFilter.isAllSelected(demographics)) return null
+    return DemographicFilter.normalizeSelection(demographics).map { it.tagName }
+  }
+
+  fun matchesCalendarEntry(entry: CalendarAiringEntry): Boolean {
+    if (hideHentai && entry.genres.containsHentaiGenre()) return false
+    if (!formats.matchesMediaFormat(entry.format)) return false
+    if (!countries.matchesMediaCountry(entry.countryOfOrigin)) return false
+    if (!sources.matchesMediaSource(entry.source)) return false
+    if (!demographics.matchesMediaTags(entry.tags)) return false
+    return true
+  }
+
   /** Client-side guard when API returns entries with missing or mismatched year metadata. */
   fun matchesSlide(slide: AnimeSlide, applySeasonFilter: Boolean = true): Boolean {
     if (hideHentai && slide.genres.containsHentaiGenre()) return false
+    if (!formats.matchesMediaFormat(slide.format)) return false
+    if (!countries.matchesMediaCountry(slide.countryOfOrigin)) return false
+    if (!sources.matchesMediaSource(slide.source)) return false
+    if (!demographics.matchesMediaTags(slide.tags)) return false
     if (!applySeasonFilter) return true
     val params = resolvedSeason()
     val targetYear = params.seasonYear ?: return true

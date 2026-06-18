@@ -216,19 +216,20 @@ If it does not:
 ### Without sign-in
 
 - Choose **Browse full library** on first launch, or open settings and set source to **Full library**.
-- Filters: season, format (TV, movie, …), sort (trending, score, etc.).
+- Filters: season, format, country, source material, demographic, and sort (trending, score, etc.). Pick one or more values per filter; at least one must stay selected in each group.
 
 ### With sign-in
 
 1. Tap center → **Sign in with AniList**.
 2. Set source to **Personal**.
 3. Pick one or more lists: Currently watching, Planning, Completed, etc.
+4. Optionally narrow with **Format**, **Country**, **Source material**, and **Demographic** under **What to show** (applied on the device after your lists load).
 
 ### Settings reference
 
 **Slideshow:** frame mode, seconds per slide, shuffle.
 
-**What to show:** source (Personal vs Full library), then list status or catalog filters depending on source.
+**What to show:** source (Personal vs Full library), then list status or catalog filters depending on source. **Format**, **Country**, **Source material**, and **Demographic** appear for both sources; **Season** and **Sort** are catalog-only (plus **Sort** on Personal calendar).
 
 **Clock & weather:** show clock, show weather, temperature unit (°C / °F), and location. Weather requires the clock to be on. Turning weather on without a saved location opens the location dialog.
 
@@ -240,7 +241,12 @@ If it does not:
 | Shuffle | Randomize slide order |
 | Seconds per slide | Auto-advance interval (5–120 s) |
 | Lists | Which AniList lists to show (Personal mode); select multiple |
-| Format / Sort / Season | Catalog filters (Full library slideshow). In **calendar** mode, **Season** is fixed to **This week’s airings**; use **Format** and **Sort** only. |
+| Format | TV, movie, OVA, … — multi-select; both sources |
+| Country | Country of origin (Japan, China, …) — multi-select; both sources |
+| Source material | Manga, light novel, original, … — multi-select; both sources |
+| Demographic | Shounen, seinen, shoujo, … — multi-select; both sources |
+| Sort | Trending, score, popularity, newest — Full library slideshow; Personal calendar |
+| Season | Catalog year/season (Full library slideshow only). Calendar shows **This week’s airings** |
 | Hide Hentai genre | Hides anime tagged Hentai on AniList from slideshow and calendar (default on) |
 | Show clock | Time and date on screen — bottom-left in poster mode, top-right (smaller) in informative mode |
 | Show weather | Current temp and icon beside the date; uses [Open-Meteo](https://open-meteo.com/), no API key |
@@ -252,19 +258,31 @@ If it does not:
 
 | Calendar filter | Applies? |
 |-----------------|----------|
-| **Format** (TV, movie, …) | Yes |
+| **Format** | Yes — multi-select |
+| **Country** | Yes — multi-select |
+| **Source material** | Yes — multi-select |
+| **Demographic** | Yes — multi-select |
 | **Sort** (trending, score, …) | Yes — list entries stay on top |
 | **Hide Hentai** | Yes |
 | **Lists** (Personal source) | Yes |
 | **Season picker** | No — settings show **This week’s airings** |
 | **AniList status** | No |
 
+### Filter behavior by source
+
+| Filter | Personal | Full library |
+|--------|----------|--------------|
+| Lists | Choose which AniList lists | — |
+| Format / Country / Source / Demographic | Applied on device after your lists load | Format + source via API where supported; country + demographic on device |
+| Sort | Calendar only (list order in slideshow) | Slideshow + calendar |
+| Season | — | Slideshow only (calendar uses the visible week) |
+
 Year picker in slideshow modes includes up to **two years ahead** of the current year.
 
 ### Calendar mode setup
 
 1. Open **Settings** → **Frame mode** → **Calendar**.
-2. Set **Source**, **Format**, and **Sort** under **What to show** (same row labels as slideshow; season row is informational only).
+2. Set **Source**, then **Format**, **Country**, **Source material**, **Demographic**, and **Sort** under **What to show** (season row is informational only).
 3. For **Personal**, pick which lists count toward your schedule.
 4. Optionally set **Week starts on** to Sunday.
 5. Swipe left/right (or tap screen edges) to browse other weeks; tap **Today** to return to the current week.

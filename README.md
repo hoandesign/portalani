@@ -5,7 +5,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.9.30
+**Version:** 0.9.33
 
 ## Features
 
@@ -13,8 +13,8 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 - **Informative mode** — poster plus synopsis, genres, rankings, and actions side by side; optional compact clock and weather at the top-right
 - **Calendar mode** — weekly airing grid (Mon–Sun or Sun–Sat): cover, episode label, English title, and local air time; swipe or tap edges for other weeks; tap a poster for animated detail (same layout as informative mode); list anime prioritized
 - **Clock & weather** — optional time, date, and current conditions from [Open-Meteo](https://open-meteo.com/) (°C/°F, city search or device location). **Poster mode:** large overlay at bottom-left. **Informative mode:** smaller overlay at top-right. Hidden while poster detail is open.
-- **Personal** — your AniList lists (watching, planning, completed, …); select multiple lists
-- **Full library** — browse the catalog with season, format, and sort filters
+- **Personal** — your AniList lists (watching, planning, completed, …); select multiple lists; narrow with format, country, source material, and demographic filters
+- **Full library** — browse the catalog with season, format, country, source material, demographic, and sort filters
 - **Hide Hentai genre** — optional content filter (on by default) for slideshow and calendar
 - AniList OAuth (rate, favourite, add to list), YouTube trailers, offline cache
 - Shuffle, slide interval, and power/sleep options
@@ -47,9 +47,9 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - Swipe down on the week grid to scroll tall days together.
 - **Personal** source: only anime on your selected lists. **Full library**: all airing anime matching filters.
 - **What’s on the grid:** every episode AniList schedules for that week. There is **no season picker** and **no status filter** (finished shows with a final episode still appear if AniList lists them for that week).
-- **Filters that still apply:** format (TV, movie, …), sort order, **Hide Hentai**, and (in Personal mode) your selected lists.
+- **Filters that still apply:** format (TV, movie, OVA, …), country of origin, source material (manga, light novel, …), demographic (shounen, seinen, …), sort order, **Hide Hentai**, and (in Personal mode) your selected lists.
 - **Detail view:** poster animates from the grid card into the left slot; info panel fades in with stable layout (no jump when full AniList data loads). Same 32dp padding as poster/informative modes.
-- Settings shows **Season** as **This week’s airings** (read-only) while in calendar mode — use **Format** and **Sort** under **What to show** instead.
+- Settings shows **Season** as **This week’s airings** (read-only) while in calendar mode — use the content filters and **Sort** under **What to show** instead.
 - No auto-advance timer — browse weeks manually.
 
 ### Clock & weather behavior
@@ -64,6 +64,21 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - Poster mode hides the clock while the poster detail flip is open; informative mode keeps it visible.
 - Weather needs a location: **Use my location** (one-time permission) or search for a city.
 - Weather data refreshes periodically while the app is running; no API key required.
+
+### What to show — filters by source
+
+| Filter | Personal (slideshow) | Personal (calendar) | Full library (slideshow) | Full library (calendar) |
+|--------|----------------------|---------------------|--------------------------|-------------------------|
+| Lists | Yes | Yes | — | — |
+| Format | Yes (on device) | Yes (on device) | Yes (AniList API) | Yes (on device) |
+| Country | Yes (on device) | Yes (on device) | Yes (on device) | Yes (on device) |
+| Source material | Yes (on device) | Yes (on device) | Yes (AniList API) | Yes (on device) |
+| Demographic | Yes (on device) | Yes (on device) | Yes (on device) | Yes (on device) |
+| Sort | List order | Yes | Yes | Yes |
+| Season | — | — | Yes | — (this week only) |
+| Hide Hentai | Yes | Yes | Yes | Yes |
+
+Personal mode loads your lists from AniList, then applies content filters on the device. Full library can also pre-filter source material via the AniList API; country and demographic are always matched on the device after fetch.
 
 ## Security
 
