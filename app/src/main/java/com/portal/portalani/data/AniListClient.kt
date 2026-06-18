@@ -136,6 +136,7 @@ class AniListClient(private val http: OkHttpClient) {
     val english = titleObj?.optString("english").orEmpty().takeIf { it.isNotBlank() && it != "null" }
     val romaji = titleObj?.optString("romaji").orEmpty().takeIf { it.isNotBlank() && it != "null" }
     val entry = media.optJSONObject("mediaListEntry")
+    val startDate = media.optJSONObject("startDate")
     val genres = mutableListOf<String>()
     media.optJSONArray("genres")?.let { arr ->
       for (i in 0 until arr.length()) {
@@ -152,6 +153,11 @@ class AniListClient(private val http: OkHttpClient) {
         format = media.optString("format").takeIf { it.isNotBlank() && it != "null" },
         season = media.optString("season").takeIf { it.isNotBlank() && it != "null" },
         seasonYear = media.optInt("seasonYear").takeIf { it > 0 },
+        startDateYear = startDate?.optInt("year")?.takeIf { it > 0 },
+        startDateMonth = startDate?.optInt("month")?.takeIf { it > 0 },
+        startDateDay = startDate?.optInt("day")?.takeIf { it > 0 },
+        episodes = media.optInt("episodes").takeIf { it > 0 },
+        status = media.optString("status").takeIf { it.isNotBlank() && it != "null" },
         averageScore = media.optInt("averageScore").takeIf { it > 0 },
         popularity = media.optInt("popularity").takeIf { it > 0 },
         listStatus = entry?.optString("status").toListStatusOrNull(),
@@ -636,6 +642,9 @@ class AniListClient(private val http: OkHttpClient) {
         format
         season
         seasonYear
+        startDate { year month day }
+        episodes
+        status
         averageScore
         popularity
         genres

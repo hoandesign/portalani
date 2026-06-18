@@ -1,5 +1,11 @@
 package com.portal.portalani.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +46,7 @@ import kotlin.math.roundToInt
 @Composable
 fun CalendarDetailOverlay(
     slide: AnimeSlide,
+    infoSlide: AnimeSlide,
     sourceBounds: Rect,
     expandProgress: Float,
     onPosterToggle: () -> Unit,
@@ -99,28 +106,48 @@ fun CalendarDetailOverlay(
                   .onGloballyPositioned { targetBounds = it.boundsInRoot() },
       )
 
-      if (expandProgress > 0.04f) {
-        val infoAlpha = ((expandProgress - 0.22f) / 0.78f).coerceIn(0f, 1f)
-        AnimeInfoPanel(
-            slide = slide,
-            modifier =
-                Modifier.align(Alignment.CenterEnd)
-                    .width(
-                        (maxWidth - targetPosterWidth - FrameViewerInsets.posterInfoGap)
-                            .coerceAtLeast(280.dp),
-                    )
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                      alpha = infoAlpha
-                      translationX = (1f - expandProgress) * 56f
-                      translationY = (1f - expandProgress) * 18f
-                    },
-            onPlayTrailer = onPlayTrailer,
-            onOpenAniList = onOpenAniList,
-            onTapScore = onTapScore,
-            onToggleFavourite = onToggleFavourite,
-            onEditList = onEditList,
-        )
+      val infoReveal =
+          FastOutSlowInEasing.transform(((expandProgress - 0.28f) / 0.72f).coerceIn(0f, 1f))
+      val infoPanelWidth =
+          (maxWidth - targetPosterWidth - FrameViewerInsets.posterInfoGap).coerceAtLeast(280.dp)
+      Box(
+          modifier =
+              Modifier.align(Alignment.CenterEnd)
+                  .width(infoPanelWidth)
+                  .fillMaxHeight()
+                  .graphicsLayer {
+                    alpha = infoReveal
+                    translationX = (1f - infoReveal) * 36f
+                  },
+      ) {
+        AnimatedContent(
+            targetState = infoSlide,
+            transitionSpec = {
+              fadeIn(animationSpec = tween(320, easing = FastOutSlowInEasing)) togetherWith
+                  fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            },
+            contentKey = { panelSlide ->
+              panelSlide.id to
+                  listOf(
+                      panelSlide.description,
+                      panelSlide.nativeTitle,
+                      panelSlide.rankings.size,
+                      panelSlide.trailerYoutubeId,
+                  )
+            },
+            label = "calendarDetailInfo",
+        ) { panelSlide ->
+          AnimeInfoPanel(
+              slide = panelSlide,
+              stableLayout = true,
+              modifier = Modifier.fillMaxSize(),
+              onPlayTrailer = onPlayTrailer,
+              onOpenAniList = onOpenAniList,
+              onTapScore = onTapScore,
+              onToggleFavourite = onToggleFavourite,
+              onEditList = onEditList,
+          )
+        }
       }
     }
 

@@ -5,13 +5,13 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.9.27
+**Version:** 0.9.30
 
 ## Features
 
 - **Poster mode** (default) — large centered poster with Ken-Burns parallax; tap to **flip** and reveal full details; long-press poster or center for settings
 - **Informative mode** — poster plus synopsis, genres, rankings, and actions side by side; optional compact clock and weather at the top-right
-- **Calendar mode** — weekly airing grid (Mon–Sun or Sun–Sat): cover, episode label, English title, and local air time; swipe or tap edges for other weeks; tap a poster for animated detail; list anime prioritized
+- **Calendar mode** — weekly airing grid (Mon–Sun or Sun–Sat): cover, episode label, English title, and local air time; swipe or tap edges for other weeks; tap a poster for animated detail (same layout as informative mode); list anime prioritized
 - **Clock & weather** — optional time, date, and current conditions from [Open-Meteo](https://open-meteo.com/) (°C/°F, city search or device location). **Poster mode:** large overlay at bottom-left. **Informative mode:** smaller overlay at top-right. Hidden while poster detail is open.
 - **Personal** — your AniList lists (watching, planning, completed, …); select multiple lists
 - **Full library** — browse the catalog with season, format, and sort filters
@@ -46,8 +46,10 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - Episode line shows **Ep N ·  Title** (spaced after the dot) with local air time below (e.g. `8:00 PM`).
 - Swipe down on the week grid to scroll tall days together.
 - **Personal** source: only anime on your selected lists. **Full library**: all airing anime matching filters.
-- Season scope: **this season + the next 3** (four seasons total). Format and sort still apply; list anime are prioritized.
-- Detail view matches poster/informative padding (32dp screen inset); blurred thumbnail while the full cover loads.
+- **What’s on the grid:** every episode AniList schedules for that week. There is **no season picker** and **no status filter** (finished shows with a final episode still appear if AniList lists them for that week).
+- **Filters that still apply:** format (TV, movie, …), sort order, **Hide Hentai**, and (in Personal mode) your selected lists.
+- **Detail view:** poster animates from the grid card into the left slot; info panel fades in with stable layout (no jump when full AniList data loads). Same 32dp padding as poster/informative modes.
+- Settings shows **Season** as **This week’s airings** (read-only) while in calendar mode — use **Format** and **Sort** under **What to show** instead.
 - No auto-advance timer — browse weeks manually.
 
 ### Clock & weather behavior

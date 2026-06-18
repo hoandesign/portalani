@@ -33,6 +33,11 @@ data class CalendarAiringEntry(
     val format: String?,
     val season: String?,
     val seasonYear: Int?,
+    val startDateYear: Int? = null,
+    val startDateMonth: Int? = null,
+    val startDateDay: Int? = null,
+    val episodes: Int? = null,
+    val status: String? = null,
     val averageScore: Int?,
     val popularity: Int?,
     val listStatus: ListStatus?,
@@ -40,6 +45,25 @@ data class CalendarAiringEntry(
 ) {
   val isOnList: Boolean
     get() = listStatus != null
+
+  /** Best-effort premiere date from start date, falling back to season year/month. */
+  fun premiereDate(): LocalDate? {
+    startDateYear?.let { year ->
+      val month = (startDateMonth ?: 1).coerceIn(1, 12)
+      val day = (startDateDay ?: 1).coerceIn(1, 28)
+      return runCatching { LocalDate.of(year, month, day) }.getOrNull()
+    }
+    val year = seasonYear ?: return null
+    val month =
+        when (season?.uppercase()) {
+          "WINTER" -> 1
+          "SPRING" -> 4
+          "SUMMER" -> 7
+          "FALL" -> 10
+          else -> 1
+        }
+    return LocalDate.of(year, month, 1)
+  }
 
   fun localDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
       Instant.ofEpochSecond(airingAt.toLong()).atZone(zone).toLocalDate()
@@ -72,11 +96,13 @@ fun CalendarAiringEntry.toPlaceholderSlide(): AnimeSlide =
         coverUrl = coverUrl,
         bannerUrl = coverUrl,
         averageScore = averageScore,
-        episodes = null,
-        status = "RELEASING",
+        episodes = episodes,
+        status = status ?: "RELEASING",
         season = season,
         seasonYear = seasonYear,
-        startDateYear = seasonYear,
+        startDateYear = startDateYear ?: seasonYear,
+        startDateMonth = startDateMonth,
+        startDateDay = startDateDay,
         format = format,
         studio = null,
         genres = genres,
@@ -89,8 +115,6 @@ fun CalendarAiringEntry.toPlaceholderSlide(): AnimeSlide =
     )
 
 object CalendarWeek {
-  private const val SEASON_WINDOW_COUNT = 4
-
   fun startOfWeek(date: LocalDate, weekStart: WeekStart): LocalDate =
       when (weekStart) {
         WeekStart.MONDAY -> date.with(DayOfWeek.MONDAY)
@@ -118,15 +142,6 @@ object CalendarWeek {
   fun dayOfWeekLabel(date: LocalDate, locale: Locale = Locale.getDefault()): String =
       date.dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
 
-  fun seasonWindow(): List<LibrarySeasonParams> = SeasonSelection.seasonWindowForward(SEASON_WINDOW_COUNT)
-
-  fun matchesSeasonWindow(season: String?, seasonYear: Int?): Boolean {
-    if (season.isNullOrBlank() || seasonYear == null || seasonYear <= 0) return false
-    return seasonWindow().any { params ->
-      params.season.equals(season, ignoreCase = true) && params.seasonYear == seasonYear
-    }
-  }
-
   fun matchesFormat(entry: CalendarAiringEntry, filter: FormatFilter): Boolean {
     val api = filter.apiValue ?: return true
     return entry.format.equals(api, ignoreCase = true)
@@ -144,7 +159,9 @@ object CalendarWeek {
                   LibrarySort.SCORE -> entry.averageScore ?: 0
                   LibrarySort.POPULARITY -> entry.popularity ?: 0
                   LibrarySort.TRENDING -> entry.popularity ?: entry.averageScore ?: 0
-                  LibrarySort.NEWEST -> (entry.seasonYear ?: 0) * 10 + seasonOrdinal(entry.season)
+                  LibrarySort.NEWEST ->
+                      entry.premiereDate()?.toEpochDay()?.toInt()
+                          ?: ((entry.seasonYear ?: 0) * 10 + seasonOrdinal(entry.season))
                 }
               },
       )

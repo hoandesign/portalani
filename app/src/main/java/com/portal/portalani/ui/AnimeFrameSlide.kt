@@ -453,6 +453,7 @@ private fun PosterModeFrameContent(
 internal fun AnimeInfoPanel(
     slide: AnimeSlide,
     modifier: Modifier = Modifier,
+    stableLayout: Boolean = false,
     onPlayTrailer: (() -> Unit)? = null,
     onOpenAniList: (() -> Unit)? = null,
     onTapScore: (() -> Unit)? = null,
@@ -476,6 +477,8 @@ internal fun AnimeInfoPanel(
     if (slide.isOnList && slide.listStatus != null) {
       ListStatusEyebrow(status = slide.listStatus)
       Spacer(Modifier.height(10.dp))
+    } else if (stableLayout) {
+      Spacer(Modifier.height(34.dp))
     }
 
     Text(
@@ -499,6 +502,8 @@ internal fun AnimeInfoPanel(
           overflow = TextOverflow.Ellipsis,
           style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.65f), blurRadius = 10f)),
       )
+    } else if (stableLayout) {
+      Spacer(Modifier.height(52.dp))
     }
 
     if (slide.averageScore != null || meta.isNotBlank()) {
@@ -507,6 +512,8 @@ internal fun AnimeInfoPanel(
           score = slide.averageScore?.let { it / 10.0 },
           meta = meta,
       )
+    } else if (stableLayout) {
+      Spacer(Modifier.height(60.dp))
     }
 
     if (slide.rankings.isNotEmpty()) {
@@ -530,6 +537,8 @@ internal fun AnimeInfoPanel(
           )
         }
       }
+    } else if (stableLayout) {
+      Spacer(Modifier.height(46.dp))
     }
 
     if (!synopsis.isNullOrBlank()) {
@@ -545,6 +554,8 @@ internal fun AnimeInfoPanel(
           modifier = Modifier.widthIn(max = 720.dp),
           style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.55f), blurRadius = 8f)),
       )
+    } else if (stableLayout) {
+      Spacer(Modifier.height(110.dp))
     }
 
     if (slide.genres.isNotEmpty()) {
@@ -558,6 +569,8 @@ internal fun AnimeInfoPanel(
           GenreTagChip(label = genre)
         }
       }
+    } else if (stableLayout) {
+      Spacer(Modifier.height(38.dp))
     }
 
     if (hasActions) {
@@ -576,6 +589,8 @@ internal fun AnimeInfoPanel(
                 text = stringResource(R.string.play_trailer),
                 onClick = onPlayTrailer,
             )
+          } else if (stableLayout && onPlayTrailer != null) {
+            Spacer(Modifier.height(44.dp).width(156.dp))
           }
           if (onOpenAniList != null) {
             PortalSecondaryButton(

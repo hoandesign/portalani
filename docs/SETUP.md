@@ -240,7 +240,7 @@ If it does not:
 | Shuffle | Randomize slide order |
 | Seconds per slide | Auto-advance interval (5–120 s) |
 | Lists | Which AniList lists to show (Personal mode); select multiple |
-| Format / Sort / Season | Catalog filters (Full library mode) |
+| Format / Sort / Season | Catalog filters (Full library slideshow). In **calendar** mode, **Season** is fixed to **This week’s airings**; use **Format** and **Sort** only. |
 | Hide Hentai genre | Hides anime tagged Hentai on AniList from slideshow and calendar (default on) |
 | Show clock | Time and date on screen — bottom-left in poster mode, top-right (smaller) in informative mode |
 | Show weather | Current temp and icon beside the date; uses [Open-Meteo](https://open-meteo.com/), no API key |
@@ -248,16 +248,27 @@ If it does not:
 | Location | City search or **Use my location**; stored on device for refresh |
 | Power | Always on (default), sleep after idle, or off during quiet hours (default 10 PM–7 AM; 30 min grace if opened during quiet hours) |
 
-**Calendar mode** uses this season plus the next three anime seasons (not the season picker). Year picker in other modes now includes up to **two years ahead** of the current year.
+**Calendar mode** loads AniList **airing schedules** for the week on screen. It does **not** use the season picker or filter by AniList status (`Releasing`, `Finished`, etc.) — if AniList still has an episode on the schedule (including a finale), it appears.
+
+| Calendar filter | Applies? |
+|-----------------|----------|
+| **Format** (TV, movie, …) | Yes |
+| **Sort** (trending, score, …) | Yes — list entries stay on top |
+| **Hide Hentai** | Yes |
+| **Lists** (Personal source) | Yes |
+| **Season picker** | No — settings show **This week’s airings** |
+| **AniList status** | No |
+
+Year picker in slideshow modes includes up to **two years ahead** of the current year.
 
 ### Calendar mode setup
 
 1. Open **Settings** → **Frame mode** → **Calendar**.
-2. Set **Source**, **Format**, and **Sort** under **What to show** (same as slideshow).
+2. Set **Source**, **Format**, and **Sort** under **What to show** (same row labels as slideshow; season row is informational only).
 3. For **Personal**, pick which lists count toward your schedule.
 4. Optionally set **Week starts on** to Sunday.
 5. Swipe left/right (or tap screen edges) to browse other weeks; tap **Today** to return to the current week.
-6. **Tap** a poster to open detail (poster + synopsis + actions, same layout as informative mode). **Long-press** anywhere on the grid, a day header, or the month title to open settings.
+6. **Tap** a poster to open detail: the card expands into the shared poster + info layout (informative-style). Title and score appear immediately from the grid; synopsis, rankings, and trailer fill in after the animation. **Long-press** anywhere on the grid, a day header, or the month title to open settings.
 
 Sign-in is required for **Personal** calendar; **Full library** works without signing in.
 
@@ -309,8 +320,9 @@ When signed in and an anime is on your list, a colored status badge appears abov
 | Offline | Last feed is cached; “Showing saved feed” badge appears |
 | Weather not showing | Enable clock + weather in settings; set a location; check network on Portal |
 | Location denied | Use city search instead of **Use my location**, or grant permission in Portal system settings |
-| Calendar empty week | Widen filters (format/sort), turn off **Hide Hentai** if needed, or try another week |
-| Calendar settings won’t open | Long-press a poster or day header (not just the screen edge) |
+| Calendar empty week | Widen **Format** / change **Sort**, turn off **Hide Hentai**, try another week, or switch **Full library** source |
+| Calendar missing a show | Confirm the episode is on [AniList’s schedule](https://anilist.co) for that week; check **Format** filter and **Hide Hentai**; finished finales still show if scheduled |
+| Calendar settings won’t open | Long-press a poster, day header, or month title (not just the screen edge) |
 
 ---
 

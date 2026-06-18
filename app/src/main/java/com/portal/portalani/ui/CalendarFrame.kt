@@ -113,7 +113,6 @@ fun CalendarHostScreen(
   var posterExpanded by remember { mutableStateOf(false) }
   var detailClosing by remember { mutableStateOf(false) }
   val detailOverlayVisible = openingEntry != null || detailSlide != null
-  val displaySlide = detailSlide ?: openingEntry?.toPlaceholderSlide()
   var weekTransitionDirection by remember { mutableIntStateOf(0) }
 
   var trailerYoutubeId by remember { mutableStateOf<String?>(null) }
@@ -184,6 +183,25 @@ fun CalendarHostScreen(
           animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
           label = "calendarDetailExpand",
       )
+
+  var detailContentUnlocked by remember { mutableStateOf(false) }
+  LaunchedEffect(expandProgress) {
+    if (expandProgress >= 0.98f) {
+      detailContentUnlocked = true
+    }
+  }
+  LaunchedEffect(openingEntry?.scheduleId) {
+    detailContentUnlocked = false
+  }
+
+  val posterSlide = detailSlide ?: openingEntry?.toPlaceholderSlide()
+  val entryForInfo = openingEntry
+  val infoSlide =
+      when {
+        detailContentUnlocked && detailSlide != null -> detailSlide
+        entryForInfo != null -> entryForInfo.toPlaceholderSlide()
+        else -> detailSlide
+      }
 
   val calendarAlpha = if (detailOverlayVisible) (1f - expandProgress).coerceIn(0f, 1f) else 1f
 
@@ -256,9 +274,10 @@ fun CalendarHostScreen(
     }
 
     val bounds = openingBounds
-    if (displaySlide != null && bounds != null) {
+    if (posterSlide != null && bounds != null && infoSlide != null) {
       CalendarDetailOverlay(
-          slide = displaySlide,
+          slide = posterSlide,
+          infoSlide = infoSlide,
           sourceBounds = bounds,
           expandProgress = expandProgress,
           onPosterToggle = {
@@ -270,15 +289,15 @@ fun CalendarHostScreen(
             }
           },
           onLongPressOpenSettings = ::openSettings,
-          onPlayTrailer = displaySlide.trailerYoutubeId?.let { id -> { trailerYoutubeId = id } },
+          onPlayTrailer = posterSlide.trailerYoutubeId?.let { id -> { trailerYoutubeId = id } },
           onOpenAniList = {
             CustomTabsIntent.Builder()
                 .build()
-                .launchUrl(context, Uri.parse(displaySlide.anilistUrl))
+                .launchUrl(context, Uri.parse(posterSlide.anilistUrl))
           },
-          onTapScore = { withSignIn { scoreDialogMediaId = displaySlide.id } },
-          onToggleFavourite = { withSignIn { onToggleFavourite(displaySlide.id) } },
-          onEditList = { withSignIn { listDialogMediaId = displaySlide.id } },
+          onTapScore = { withSignIn { scoreDialogMediaId = posterSlide.id } },
+          onToggleFavourite = { withSignIn { onToggleFavourite(posterSlide.id) } },
+          onEditList = { withSignIn { listDialogMediaId = posterSlide.id } },
           modifier = Modifier.fillMaxSize(),
       )
     }
@@ -288,7 +307,7 @@ fun CalendarHostScreen(
     }
 
     scoreDialogMediaId?.let { mediaId ->
-      displaySlide?.takeIf { it.id == mediaId }?.let { slide ->
+      posterSlide?.takeIf { it.id == mediaId }?.let { slide ->
         ScoreSliderDialog(
             animeTitle = slide.title,
             initialScore = slide.userScore,
@@ -302,7 +321,7 @@ fun CalendarHostScreen(
     }
 
     listDialogMediaId?.let { mediaId ->
-      displaySlide?.takeIf { it.id == mediaId }?.let { slide ->
+      posterSlide?.takeIf { it.id == mediaId }?.let { slide ->
         ListStatusDialog(
             animeTitle = slide.title,
             currentStatus = slide.listStatus,

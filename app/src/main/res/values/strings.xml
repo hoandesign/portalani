@@ -30,7 +30,7 @@
     <string name="calendar_episode_prefix">Ep %1$d ·</string>
     <string name="calendar_today">Today</string>
     <string name="calendar_loading_detail">Loading details…</string>
-    <string name="calendar_season_window">This season + next 3</string>
+    <string name="calendar_season_window">This week\'s airings</string>
     <string name="guide_swipe_week">Swipe for other weeks</string>
     <string name="show_poster_clock">Show clock</string>
     <string name="show_weather">Show weather</string>

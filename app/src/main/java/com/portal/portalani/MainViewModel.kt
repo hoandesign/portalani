@@ -33,6 +33,7 @@ import com.portal.portalani.data.TokenStore
 import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.WeatherNow
 import com.portal.portalani.data.WeekStart
+import com.portal.portalani.data.toPlaceholderSlide
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -183,6 +184,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   fun openCalendarEntry(entry: CalendarAiringEntry) {
+    _calendarDetailSlide.value = entry.toPlaceholderSlide()
     viewModelScope.launch {
       _calendarDetailLoading.value = true
       try {
@@ -190,9 +192,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             withContext(Dispatchers.IO) {
               client.fetchMediaById(entry.mediaId, tokens.accessToken())
             }
-        if (slide != null) {
+        if (slide != null && _calendarDetailSlide.value?.id == entry.mediaId) {
           _calendarDetailSlide.value = slide
-        } else {
+        } else if (slide == null) {
           _userMessage.value = "Could not load anime details."
         }
       } catch (e: Exception) {
@@ -802,7 +804,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
       val filtered =
           raw
               .asSequence()
-              .filter { CalendarWeek.matchesSeasonWindow(it.season, it.seasonYear) }
               .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
               .filter { CalendarWeek.matchesHideHentai(it, settings.hideHentai) }
               .filter { entry ->
@@ -896,7 +897,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val filtered =
         raw
             .asSequence()
-            .filter { CalendarWeek.matchesSeasonWindow(it.season, it.seasonYear) }
             .filter { CalendarWeek.matchesFormat(it, settings.formatFilter) }
             .filter { CalendarWeek.matchesHideHentai(it, settings.hideHentai) }
             .filter { entry ->
