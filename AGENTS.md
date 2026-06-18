@@ -11,7 +11,7 @@ Kotlin + Jetpack Compose Android app for **Meta Portal** (screensaver / DreamSer
 
 - **Project path:** `~/Documents/Github/portalani`
 - **Build:** `GRADLE_OPTS="-Xmx2g" ./gradlew assembleDebug`
-- **Deploy:** `bash scripts/deploy.sh --build` (USB Portal; see SETUP.md)
+- **Deploy:** `bash scripts/deploy.sh --build` (USB Portal; see SETUP.md) — **after a successful release build, deploy to the connected Portal automatically; do not ask Hoan**
 - **Secrets:** `local.properties` only — never commit AniList client secret or tokens
 - **Owner:** Hoan Do — plain-language explanations; ask before large refactors or new frameworks
 - **Scope:** Fix real bugs with minimal diffs; add tests before splitting god files (`MainViewModel.kt`, `PortalAniApp.kt`, `AnimeInteractionDialogs.kt`)
@@ -20,7 +20,7 @@ Kotlin + Jetpack Compose Android app for **Meta Portal** (screensaver / DreamSer
 
 - Compose UI smoke tests exist but are not run in CI (need emulator)
 - Heavy `org.json` parsing in `AniListClient.kt`
-- God files still large at UI layer (`PortalAniApp.kt`, `AnimeInteractionDialogs.kt`)
+- God files still large at UI layer (`AnimeInteractionDialogs.kt`; settings moved to `SettingsPanel.kt`)
 
 ## Do not
 
