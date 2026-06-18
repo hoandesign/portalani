@@ -31,22 +31,11 @@ enum class FormatFilter(val apiValue: String?, val label: String) {
     fun isAllSelected(selected: Set<FormatFilter>): Boolean =
         normalizeSelection(selected).containsAll(selectable)
 
-    fun decodeSelection(raw: String?): Set<FormatFilter> {
-      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
-      val parsed =
-          raw.split(',')
-              .mapNotNull { token ->
-                token.trim().takeIf { it.isNotEmpty() }?.let {
-                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
-                }
-              }
-              .toSet()
-      return normalizeSelection(parsed)
-    }
+    fun decodeSelection(raw: String?): Set<FormatFilter> =
+        decodeCommaSeparatedEnumSelection(raw, ALL, ::normalizeSelection)
 
     fun encodeSelection(selected: Set<FormatFilter>): String =
-        if (isAllSelected(selected)) ALL.name
-        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+        encodeCommaSeparatedEnumSelection(selected, ALL, ::normalizeSelection, ::isAllSelected)
 
     /** Migrate a single-format preference from older builds. */
     fun fromLegacy(single: FormatFilter): Set<FormatFilter> =
@@ -96,22 +85,11 @@ enum class CountryFilter(val apiValue: String, val label: String) {
     fun isAllSelected(selected: Set<CountryFilter>): Boolean =
         normalizeSelection(selected).containsAll(selectable)
 
-    fun decodeSelection(raw: String?): Set<CountryFilter> {
-      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
-      val parsed =
-          raw.split(',')
-              .mapNotNull { token ->
-                token.trim().takeIf { it.isNotEmpty() }?.let {
-                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
-                }
-              }
-              .toSet()
-      return normalizeSelection(parsed)
-    }
+    fun decodeSelection(raw: String?): Set<CountryFilter> =
+        decodeCommaSeparatedEnumSelection(raw, ALL, ::normalizeSelection)
 
     fun encodeSelection(selected: Set<CountryFilter>): String =
-        if (isAllSelected(selected)) ALL.name
-        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+        encodeCommaSeparatedEnumSelection(selected, ALL, ::normalizeSelection, ::isAllSelected)
   }
 }
 
@@ -162,22 +140,11 @@ enum class SourceFilter(val apiValue: String, val label: String) {
     fun isAllSelected(selected: Set<SourceFilter>): Boolean =
         normalizeSelection(selected).containsAll(selectable)
 
-    fun decodeSelection(raw: String?): Set<SourceFilter> {
-      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
-      val parsed =
-          raw.split(',')
-              .mapNotNull { token ->
-                token.trim().takeIf { it.isNotEmpty() }?.let {
-                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
-                }
-              }
-              .toSet()
-      return normalizeSelection(parsed)
-    }
+    fun decodeSelection(raw: String?): Set<SourceFilter> =
+        decodeCommaSeparatedEnumSelection(raw, ALL, ::normalizeSelection)
 
     fun encodeSelection(selected: Set<SourceFilter>): String =
-        if (isAllSelected(selected)) ALL.name
-        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+        encodeCommaSeparatedEnumSelection(selected, ALL, ::normalizeSelection, ::isAllSelected)
   }
 }
 
@@ -211,22 +178,11 @@ enum class DemographicFilter(val tagName: String, val label: String) {
     fun isAllSelected(selected: Set<DemographicFilter>): Boolean =
         normalizeSelection(selected).containsAll(selectable)
 
-    fun decodeSelection(raw: String?): Set<DemographicFilter> {
-      if (raw.isNullOrBlank() || raw == ALL.name) return defaultSelection()
-      val parsed =
-          raw.split(',')
-              .mapNotNull { token ->
-                token.trim().takeIf { it.isNotEmpty() }?.let {
-                  runCatching { valueOf(it) }.getOrNull()?.takeIf { f -> f != ALL }
-                }
-              }
-              .toSet()
-      return normalizeSelection(parsed)
-    }
+    fun decodeSelection(raw: String?): Set<DemographicFilter> =
+        decodeCommaSeparatedEnumSelection(raw, ALL, ::normalizeSelection)
 
     fun encodeSelection(selected: Set<DemographicFilter>): String =
-        if (isAllSelected(selected)) ALL.name
-        else normalizeSelection(selected).sortedBy { it.ordinal }.joinToString(",") { it.name }
+        encodeCommaSeparatedEnumSelection(selected, ALL, ::normalizeSelection, ::isAllSelected)
   }
 }
 
@@ -400,7 +356,7 @@ object SeasonSelection {
     }
     if (key.startsWith("season-only:")) {
       val seasonName = key.removePrefix("season-only:")
-      val season = runCatching { AnimeSeason.valueOf(seasonName) }.getOrNull() ?: return LibrarySeasonParams()
+      val season = enumValueOrNull<AnimeSeason>(seasonName) ?: return LibrarySeasonParams()
       return LibrarySeasonParams(season = season.apiValue)
     }
     if (key.startsWith("season:")) {

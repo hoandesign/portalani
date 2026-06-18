@@ -64,9 +64,7 @@ internal fun JSONObject.toAnimeSlideOrNull(): AnimeSlide? {
       trailerYoutubeId = optString("trailerYoutubeId").takeIf { it.isNotBlank() && it != "null" },
       listEntryId = optInt("listEntryId").takeIf { it > 0 },
       listStatus =
-          optString("listStatus").takeIf { it.isNotBlank() && it != "null" }?.let {
-            runCatching { ListStatus.valueOf(it) }.getOrNull()
-          },
+          optString("listStatus").takeIf { it.isNotBlank() && it != "null" }?.let { enumValueOrNull<ListStatus>(it) },
       userScore =
           optDouble("userScore", 0.0).takeIf { !it.isNaN() && it > 0.0 }?.toFloat()?.let {
             if (it <= 10f) it else it / 10f
@@ -124,11 +122,9 @@ private fun MediaRanking.toCacheJson(): JSONObject =
 private fun JSONObject.toMediaRankingOrNull(defaultType: RankType = RankType.RATED): MediaRanking? {
   val rank = optInt("rank").takeIf { it > 0 } ?: return null
   val type =
-      optString("type").takeIf { it.isNotBlank() && it != "null" }?.let {
-        runCatching { RankType.valueOf(it) }.getOrNull()
-      } ?: defaultType
-  val scope =
-      runCatching { RankScope.valueOf(optString("scope")) }.getOrNull() ?: RankScope.ALL_TIME
+      optString("type").takeIf { it.isNotBlank() && it != "null" }?.let { enumValueOrNull<RankType>(it) }
+          ?: defaultType
+  val scope = enumValueOrNull<RankScope>(optString("scope")) ?: RankScope.ALL_TIME
   return MediaRanking(
       rank = rank,
       type = type,

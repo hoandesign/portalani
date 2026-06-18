@@ -210,10 +210,7 @@ internal object AniListJsonParser {
         .takeIf { it.isNotBlank() }
   }
 
-  fun parseListStatus(raw: String?): ListStatus? {
-    if (raw.isNullOrBlank() || raw == "null") return null
-    return runCatching { ListStatus.valueOf(raw) }.getOrNull()
-  }
+  fun parseListStatus(raw: String?): ListStatus? = enumValueOrNull<ListStatus>(raw)
 
   fun parseUserScore(raw: Double): Float? {
     if (raw <= 0.0) return null
