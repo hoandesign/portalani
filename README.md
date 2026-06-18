@@ -1,4 +1,5 @@
 [![aislop](https://badges.scanaislop.com/score/hoandesign/portalani.svg)](https://scanaislop.com/hoandesign/portalani)
+[![CI](https://github.com/hoandesign/portalani/actions/workflows/ci.yml/badge.svg)](https://github.com/hoandesign/portalani/actions/workflows/ci.yml)
 
 # Portal Ani
 
@@ -27,6 +28,18 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 1. Follow **[docs/SETUP.md](docs/SETUP.md)** — AniList OAuth app, build, and Portal deploy.
 2. Build: `GRADLE_OPTS="-Xmx2g" ./gradlew assembleDebug`
 3. Deploy: `bash scripts/deploy.sh --build`
+
+## Testing
+
+Run unit tests (filters, season encoding, calendar math, cache JSON, AniList parsing):
+
+```bash
+GRADLE_OPTS="-Xmx2g" ./gradlew test
+```
+
+GitHub Actions runs the same command on every push to `main` and on pull requests (no AniList secrets required for compile/test).
+
+**Production hardening (tests, CI, code quality):** see [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md) and [AGENTS.md](AGENTS.md).
 
 ## Gestures on Portal
 

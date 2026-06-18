@@ -1,0 +1,31 @@
+{
+  "mediaList": [
+    {
+      "id": 9001,
+      "status": "CURRENT",
+      "score": 8.5,
+      "media": {
+        "id": 20001,
+        "title": {
+          "romaji": "List Romaji",
+          "english": null,
+          "native": null
+        },
+        "bannerImage": null,
+        "coverImage": {
+          "large": "https://example.com/list-cover.jpg"
+        },
+        "averageScore": 75,
+        "episodes": 12,
+        "status": "RELEASING",
+        "season": "SUMMER",
+        "seasonYear": 2023,
+        "format": "TV",
+        "genres": ["Drama"],
+        "tags": [],
+        "siteUrl": "https://anilist.co/anime/20001",
+        "isFavourite": true
+      }
+    }
+  ]
+}

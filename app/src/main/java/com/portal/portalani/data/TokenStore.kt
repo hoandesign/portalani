@@ -53,91 +53,15 @@ class TokenStore(context: Context) {
 class SettingsStore(context: Context) {
   private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-  fun load(): AppSettings {
-    val sourceMode =
-        if (prefs.contains(KEY_SOURCE_MODE)) {
-          SourceMode.valueOf(prefs.getString(KEY_SOURCE_MODE, SourceMode.LIBRARY.name)!!)
-        } else if (prefs.getBoolean(KEY_USE_MY_LIST_LEGACY, true)) {
-          SourceMode.PERSONAL
-        } else {
-          SourceMode.LIBRARY
-        }
-    val listStatuses =
-        prefs.getString(KEY_LIST_STATUSES, null)
-            ?.split(',')
-            ?.mapNotNull { token ->
-              token.trim().takeIf { it.isNotEmpty() }?.let {
-                runCatching { ListStatus.valueOf(it) }.getOrNull()
-              }
-            }
-            ?.toSet()
-            ?.takeIf { it.isNotEmpty() }
-            ?: setOf(
-                ListStatus.valueOf(prefs.getString(KEY_LIST_STATUS, ListStatus.CURRENT.name)!!),
-            )
-    val weatherPlace = prefs.getString(KEY_WEATHER_PLACE, null)?.ifBlank { null }
-    val weatherLat =
-        if (weatherPlace != null) {
-          prefs.getFloat(KEY_WEATHER_LAT, Float.NaN).toDouble().takeIf { !it.isNaN() }
-        } else {
-          null
-        }
-    val weatherLon =
-        if (weatherPlace != null) {
-          prefs.getFloat(KEY_WEATHER_LON, Float.NaN).toDouble().takeIf { !it.isNaN() }
-        } else {
-          null
-        }
-    val formatFilters =
-        if (prefs.contains(KEY_FORMAT_FILTERS)) {
-          FormatFilter.decodeSelection(prefs.getString(KEY_FORMAT_FILTERS, null))
-        } else {
-          FormatFilter.fromLegacy(
-              FormatFilter.valueOf(prefs.getString(KEY_FORMAT_FILTER, FormatFilter.ALL.name)!!),
-          )
-        }
-    val countryFilters = CountryFilter.decodeSelection(prefs.getString(KEY_COUNTRY_FILTERS, null))
-    val sourceFilters = SourceFilter.decodeSelection(prefs.getString(KEY_SOURCE_FILTERS, null))
-    val demographicFilters =
-        DemographicFilter.decodeSelection(prefs.getString(KEY_DEMOGRAPHIC_FILTERS, null))
-    return AppSettings(
-        shuffle = prefs.getBoolean(KEY_SHUFFLE, true),
-        intervalMs = prefs.getLong(KEY_INTERVAL_MS, 12_000L),
-        sourceMode = sourceMode,
-        listStatuses = listStatuses,
-        formatFilters = formatFilters,
-        countryFilters = countryFilters,
-        sourceFilters = sourceFilters,
-        demographicFilters = demographicFilters,
-        librarySort =
-            LibrarySort.valueOf(prefs.getString(KEY_LIBRARY_SORT, LibrarySort.POPULARITY.name)!!),
-        seasonKey = prefs.getString(KEY_SEASON_KEY, SeasonSelection.ANY_KEY)!!,
-        frameMode =
-            runCatching { FrameMode.valueOf(prefs.getString(KEY_FRAME_MODE, FrameMode.POSTER_ONLY.name)!!) }
-                .getOrDefault(FrameMode.POSTER_ONLY),
-        showPosterClock = prefs.getBoolean(KEY_SHOW_POSTER_CLOCK, true),
-        showWeather = prefs.getBoolean(KEY_SHOW_WEATHER, false),
-        weatherFahrenheit =
-            if (prefs.contains(KEY_WEATHER_FAHRENHEIT)) {
-              prefs.getBoolean(KEY_WEATHER_FAHRENHEIT, false)
-            } else {
-              java.util.Locale.getDefault().country == "US"
-            },
-        weatherLat = weatherLat,
-        weatherLon = weatherLon,
-        weatherPlace = weatherPlace,
-        weekStart =
-            runCatching { WeekStart.valueOf(prefs.getString(KEY_WEEK_START, WeekStart.MONDAY.name)!!) }
-                .getOrDefault(WeekStart.MONDAY),
-        powerMode =
-            runCatching { PowerMode.valueOf(prefs.getString(KEY_POWER_MODE, PowerMode.ALWAYS_ON.name)!!) }
-                .getOrDefault(PowerMode.ALWAYS_ON),
-        idleSleepMinutes = prefs.getInt(KEY_IDLE_SLEEP_MINUTES, PowerPolicy.DEFAULT_IDLE_SLEEP_MINUTES),
-        sleepStartMinutes = prefs.getInt(KEY_SLEEP_START_MINUTES, PowerPolicy.DEFAULT_SLEEP_START_MINUTES),
-        sleepEndMinutes = prefs.getInt(KEY_SLEEP_END_MINUTES, PowerPolicy.DEFAULT_SLEEP_END_MINUTES),
-        hideHentai = prefs.getBoolean(KEY_HIDE_HENTAI, true),
-    )
-  }
+  fun load(): AppSettings =
+      parseAppSettings(
+          containsKey = prefs::contains,
+          getString = prefs::getString,
+          getBoolean = prefs::getBoolean,
+          getLong = prefs::getLong,
+          getInt = prefs::getInt,
+          getFloat = prefs::getFloat,
+      )
 
   fun isOnboardingComplete(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
 
@@ -187,33 +111,33 @@ class SettingsStore(context: Context) {
   }
 
   companion object {
-    private const val PREFS = "portalani_settings"
-    private const val KEY_SHUFFLE = "shuffle"
-    private const val KEY_INTERVAL_MS = "interval_ms"
-    private const val KEY_USE_MY_LIST_LEGACY = "use_my_list"
-    private const val KEY_SOURCE_MODE = "source_mode"
-    private const val KEY_LIST_STATUS = "list_status"
-    private const val KEY_LIST_STATUSES = "list_statuses"
-    private const val KEY_FORMAT_FILTER = "format_filter"
-    private const val KEY_FORMAT_FILTERS = "format_filters"
-    private const val KEY_COUNTRY_FILTERS = "country_filters"
-    private const val KEY_SOURCE_FILTERS = "source_filters"
-    private const val KEY_DEMOGRAPHIC_FILTERS = "demographic_filters"
-    private const val KEY_LIBRARY_SORT = "library_sort"
-    private const val KEY_SEASON_KEY = "season_key"
-    private const val KEY_FRAME_MODE = "frame_mode"
-    private const val KEY_WEEK_START = "week_start"
-    private const val KEY_SHOW_POSTER_CLOCK = "show_poster_clock"
-    private const val KEY_SHOW_WEATHER = "show_weather"
-    private const val KEY_WEATHER_FAHRENHEIT = "weather_fahrenheit"
-    private const val KEY_WEATHER_LAT = "weather_lat"
-    private const val KEY_WEATHER_LON = "weather_lon"
-    private const val KEY_WEATHER_PLACE = "weather_place"
-    private const val KEY_POWER_MODE = "power_mode"
-    private const val KEY_IDLE_SLEEP_MINUTES = "idle_sleep_minutes"
-    private const val KEY_SLEEP_START_MINUTES = "sleep_start_minutes"
-    private const val KEY_SLEEP_END_MINUTES = "sleep_end_minutes"
-    private const val KEY_HIDE_HENTAI = "hide_hentai"
-    private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+    internal const val PREFS = "portalani_settings"
+    internal const val KEY_SHUFFLE = "shuffle"
+    internal const val KEY_INTERVAL_MS = "interval_ms"
+    internal const val KEY_USE_MY_LIST_LEGACY = "use_my_list"
+    internal const val KEY_SOURCE_MODE = "source_mode"
+    internal const val KEY_LIST_STATUS = "list_status"
+    internal const val KEY_LIST_STATUSES = "list_statuses"
+    internal const val KEY_FORMAT_FILTER = "format_filter"
+    internal const val KEY_FORMAT_FILTERS = "format_filters"
+    internal const val KEY_COUNTRY_FILTERS = "country_filters"
+    internal const val KEY_SOURCE_FILTERS = "source_filters"
+    internal const val KEY_DEMOGRAPHIC_FILTERS = "demographic_filters"
+    internal const val KEY_LIBRARY_SORT = "library_sort"
+    internal const val KEY_SEASON_KEY = "season_key"
+    internal const val KEY_FRAME_MODE = "frame_mode"
+    internal const val KEY_WEEK_START = "week_start"
+    internal const val KEY_SHOW_POSTER_CLOCK = "show_poster_clock"
+    internal const val KEY_SHOW_WEATHER = "show_weather"
+    internal const val KEY_WEATHER_FAHRENHEIT = "weather_fahrenheit"
+    internal const val KEY_WEATHER_LAT = "weather_lat"
+    internal const val KEY_WEATHER_LON = "weather_lon"
+    internal const val KEY_WEATHER_PLACE = "weather_place"
+    internal const val KEY_POWER_MODE = "power_mode"
+    internal const val KEY_IDLE_SLEEP_MINUTES = "idle_sleep_minutes"
+    internal const val KEY_SLEEP_START_MINUTES = "sleep_start_minutes"
+    internal const val KEY_SLEEP_END_MINUTES = "sleep_end_minutes"
+    internal const val KEY_HIDE_HENTAI = "hide_hentai"
+    internal const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
   }
 }

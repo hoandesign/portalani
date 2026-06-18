@@ -1,0 +1,32 @@
+{
+  "id": 50001,
+  "airingAt": 1700003600,
+  "episode": 6,
+  "mediaId": 30001,
+  "media": {
+    "id": 30001,
+    "title": {
+      "romaji": "Schedule Romaji",
+      "english": "Schedule English"
+    },
+    "coverImage": {
+      "medium": "https://example.com/schedule-cover.jpg"
+    },
+    "format": "TV",
+    "countryOfOrigin": "JP",
+    "source": "LIGHT_NOVEL",
+    "tags": [{ "name": "Seinen" }],
+    "season": "FALL",
+    "seasonYear": 2024,
+    "startDate": { "year": 2024, "month": 10, "day": 1 },
+    "episodes": 12,
+    "status": "RELEASING",
+    "averageScore": 88,
+    "popularity": 12000,
+    "genres": ["Action"],
+    "mediaListEntry": {
+      "id": 7001,
+      "status": "PLANNING"
+    }
+  }
+}
