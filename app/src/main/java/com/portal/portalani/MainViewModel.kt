@@ -18,7 +18,6 @@ import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.CalendarAiringEntry
-import com.portal.portalani.data.CalendarWeek
 import com.portal.portalani.data.CalendarWeekCache
 import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.CountryFilter
@@ -37,10 +36,8 @@ import com.portal.portalani.data.TokenStore
 import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.WeatherNow
 import com.portal.portalani.data.WeekStart
-import com.portal.portalani.data.toPlaceholderSlide
+import com.portal.portalani.vm.CalendarCoordinator
 import java.io.IOException
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -77,13 +74,6 @@ sealed interface UiState {
   ) : UiState
 }
 
-data class CalendarWeekState(
-    val weekStart: LocalDate,
-    val entries: List<CalendarAiringEntry>,
-    val isCurrentWeek: Boolean = false,
-    val fromCache: Boolean = false,
-)
-
 class MainViewModel internal constructor(
     app: Application,
     deps: MainViewModelDeps,
@@ -113,6 +103,22 @@ class MainViewModel internal constructor(
   private val _userMessage = MutableStateFlow<String?>(null)
   val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
+  private val calendar =
+      CalendarCoordinator(
+          scope = viewModelScope,
+          client = client,
+          calendarWeekCache = calendarWeekCache,
+          tokens = tokens,
+          getSettings = { _settings.value },
+          isAuthConfigured = { auth.isConfigured() },
+          onRootState = { _state.value = it },
+          onSessionExpired = { message ->
+            clearSessionFromStorage()
+            _state.value = needsSignIn(message)
+          },
+          onUserMessage = { _userMessage.value = it },
+      )
+
   private val _onboardingComplete = MutableStateFlow(settingsStore.isOnboardingComplete())
   val onboardingComplete: StateFlow<Boolean> = _onboardingComplete.asStateFlow()
 
@@ -125,22 +131,10 @@ class MainViewModel internal constructor(
   private val _geoResults = MutableStateFlow<List<GeoPlace>>(emptyList())
   val geoResults: StateFlow<List<GeoPlace>> = _geoResults.asStateFlow()
 
-  private val _calendarState = MutableStateFlow<CalendarWeekState?>(null)
-  val calendarState: StateFlow<CalendarWeekState?> = _calendarState.asStateFlow()
-
-  private val _calendarLoading = MutableStateFlow(false)
-  val calendarLoading: StateFlow<Boolean> = _calendarLoading.asStateFlow()
-
-  private val _calendarDetailSlide = MutableStateFlow<AnimeSlide?>(null)
-  val calendarDetailSlide: StateFlow<AnimeSlide?> = _calendarDetailSlide.asStateFlow()
-
-  private val _calendarDetailLoading = MutableStateFlow(false)
-  val calendarDetailLoading: StateFlow<Boolean> = _calendarDetailLoading.asStateFlow()
-
-  private var calendarWeekOffset = 0
-  private val calendarMemoryCache = object : LinkedHashMap<String, CalendarWeekState>(16, 0.75f, true) {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CalendarWeekState>?): Boolean = size > 16
-  }
+  val calendarState = calendar.calendarState
+  val calendarLoading = calendar.calendarLoading
+  val calendarDetailSlide = calendar.calendarDetailSlide
+  val calendarDetailLoading = calendar.calendarDetailLoading
 
   private var pendingOAuthState: String? = null
   private var stateBeforeSignIn: UiState? = null
@@ -168,13 +162,12 @@ class MainViewModel internal constructor(
     viewModelScope.launch {
       if (_settings.value.frameMode == FrameMode.CALENDAR) {
         if (forceReload) {
-          calendarWeekOffset = 0
-          clearCalendarMemoryCache()
+          calendar.resetOffsetAndClearCache()
         }
-        if (_calendarState.value == null || forceReload) {
-          navigateToCalendarWeek()
+        if (calendar.calendarState.value == null || forceReload) {
+          calendar.navigateToWeek()
         } else {
-          loadCalendarWeek()
+          calendar.loadWeek(showLoading = forceReload)
         }
       } else {
         loadSlides(showLoading = forceReload || _state.value !is UiState.Showing)
@@ -183,100 +176,26 @@ class MainViewModel internal constructor(
   }
 
   fun shiftCalendarWeek(delta: Int) {
-    calendarWeekOffset += delta
-    navigateToCalendarWeek()
+    calendar.shiftWeek(delta)
   }
 
   fun goToCalendarToday() {
-    if (calendarWeekOffset == 0) return
-    calendarWeekOffset = 0
-    navigateToCalendarWeek()
+    calendar.goToToday()
   }
 
   fun openCalendarEntry(entry: CalendarAiringEntry) {
-    _calendarDetailSlide.value = entry.toPlaceholderSlide()
-    viewModelScope.launch {
-      _calendarDetailLoading.value = true
-      try {
-        val slide =
-            withContext(Dispatchers.IO) {
-              client.fetchMediaById(entry.mediaId, tokens.accessToken())
-            }
-        if (slide != null && _calendarDetailSlide.value?.id == entry.mediaId) {
-          _calendarDetailSlide.value = slide
-        } else if (slide == null) {
-          _userMessage.value = "Could not load anime details."
-        }
-      } catch (e: IOException) {
-        _userMessage.value = userVisibleError(e, "Could not load anime details.")
-      } catch (e: JSONException) {
-        _userMessage.value = userVisibleError(e, "Could not load anime details.")
-      } finally {
-        _calendarDetailLoading.value = false
-      }
-    }
+    calendar.openEntry(entry)
   }
 
   fun closeCalendarDetail() {
-    _calendarDetailSlide.value = null
-    _calendarDetailLoading.value = false
-  }
-
-  private fun calendarWeekStart(settings: AppSettings = _settings.value): LocalDate {
-    val zone = ZoneId.systemDefault()
-    val today = LocalDate.now(zone)
-    val anchor = CalendarWeek.startOfWeek(today, settings.weekStart)
-    return anchor.plusWeeks(calendarWeekOffset.toLong())
-  }
-
-  private fun navigateToCalendarWeek() {
-    val settings = _settings.value
-    val weekStart = calendarWeekStart(settings)
-    val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
-    val memCached = calendarMemoryCache[cacheKey]
-    if (memCached != null) {
-      _calendarState.value = memCached
-      _calendarLoading.value = false
-      viewModelScope.launch { loadCalendarWeek(weekStart = weekStart, allowStaleOverlay = false) }
-      return
-    }
-
-    val diskCached = calendarWeekCache.load(cacheKey) ?: calendarWeekCache.loadStale(cacheKey)
-    if (diskCached != null && diskCached.weekStart == weekStart) {
-      val fromDisk =
-          CalendarWeekState(
-              weekStart = weekStart,
-              entries = diskCached.entries,
-              isCurrentWeek = calendarWeekOffset == 0,
-              fromCache = true,
-          )
-      calendarMemoryCache[cacheKey] = fromDisk
-      _calendarState.value = fromDisk
-      _calendarLoading.value = false
-      viewModelScope.launch { loadCalendarWeek(weekStart = weekStart, allowStaleOverlay = false) }
-      return
-    }
-
-    _calendarState.value =
-        CalendarWeekState(
-            weekStart = weekStart,
-            entries = emptyList(),
-            isCurrentWeek = calendarWeekOffset == 0,
-        )
-    _calendarLoading.value = true
-    viewModelScope.launch { loadCalendarWeek(weekStart = weekStart, allowStaleOverlay = true) }
-  }
-
-  private fun clearCalendarMemoryCache() {
-    calendarMemoryCache.clear()
+    calendar.closeDetail()
   }
 
   fun setWeekStart(weekStart: WeekStart) {
     updateSettings(_settings.value.copy(weekStart = weekStart))
     if (_settings.value.frameMode == FrameMode.CALENDAR) {
-      calendarWeekOffset = 0
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+      calendar.resetOffsetAndClearCache()
+      calendar.navigateToWeek()
     }
   }
 
@@ -401,12 +320,11 @@ class MainViewModel internal constructor(
   }
 
   fun setSourceMode(mode: SourceMode) {
-    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
+    val isCalendarMode = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(sourceMode = mode))
-    if (calendar) {
-      calendarWeekOffset = 0
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+    if (isCalendarMode) {
+      calendar.resetOffsetAndClearCache()
+      calendar.navigateToWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -431,9 +349,8 @@ class MainViewModel internal constructor(
     val leavingCalendar = _settings.value.frameMode == FrameMode.CALENDAR && mode != FrameMode.CALENDAR
     updateSettings(_settings.value.copy(frameMode = mode))
     if (mode == FrameMode.CALENDAR) {
-      calendarWeekOffset = 0
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+      calendar.resetOffsetAndClearCache()
+      calendar.navigateToWeek()
     } else if (leavingCalendar) {
       refresh(forceReload = true)
     }
@@ -633,11 +550,11 @@ class MainViewModel internal constructor(
 
   fun setListStatuses(statuses: Set<ListStatus>) {
     if (statuses.isEmpty()) return
-    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
+    val isCalendarMode = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(listStatuses = statuses))
-    if (calendar) {
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+    if (isCalendarMode) {
+      calendar.clearMemoryCache()
+      calendar.navigateToWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -666,33 +583,33 @@ class MainViewModel internal constructor(
   }
 
   private fun applyContentFilterChange(transform: (AppSettings) -> AppSettings) {
-    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
+    val isCalendarMode = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(transform(_settings.value))
-    if (calendar) {
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+    if (isCalendarMode) {
+      calendar.clearMemoryCache()
+      calendar.navigateToWeek()
     } else {
       refresh(forceReload = true)
     }
   }
 
   fun setHideHentai(enabled: Boolean) {
-    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
+    val isCalendarMode = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(hideHentai = enabled))
-    if (calendar) {
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+    if (isCalendarMode) {
+      calendar.clearMemoryCache()
+      calendar.navigateToWeek()
     } else {
       refresh(forceReload = true)
     }
   }
 
   fun setLibrarySort(sort: LibrarySort) {
-    val calendar = _settings.value.frameMode == FrameMode.CALENDAR
+    val isCalendarMode = _settings.value.frameMode == FrameMode.CALENDAR
     updateSettings(_settings.value.copy(librarySort = sort))
-    if (calendar) {
-      clearCalendarMemoryCache()
-      navigateToCalendarWeek()
+    if (isCalendarMode) {
+      calendar.clearMemoryCache()
+      calendar.navigateToWeek()
     } else {
       refresh(forceReload = true)
     }
@@ -840,177 +757,9 @@ class MainViewModel internal constructor(
     _settings.value = next
   }
 
-  private suspend fun loadCalendarWeek(
-      showLoading: Boolean = false,
-      weekStart: LocalDate = calendarWeekStart(),
-      allowStaleOverlay: Boolean = showLoading,
-  ) {
-    val settings = _settings.value
-    val token = tokens.accessToken()
-
-    if (settings.sourceMode == SourceMode.PERSONAL && token == null) {
-      _calendarState.value = null
-      _state.value =
-          UiState.NeedsSetup(
-              message = "Sign in to show your list schedule on the calendar.",
-              canSignIn = auth.isConfigured(),
-              canUseLibrary = true,
-          )
-      return
-    }
-
-    val zone = ZoneId.systemDefault()
-    val weekEnd = weekStart.plusDays(6)
-    val airingAtGreater = weekStart.atStartOfDay(zone).toEpochSecond().toInt()
-    val airingAtLesser = weekEnd.atTime(23, 59, 59).atZone(zone).toEpochSecond().toInt()
-
-    val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
-    val hasVisibleData = calendarMemoryCache[cacheKey]?.entries?.isNotEmpty() == true
-    val showLoadingOverlay = allowStaleOverlay && !hasVisibleData && calendarWeekStart(settings) == weekStart
-    if (showLoadingOverlay) {
-      _calendarLoading.value = true
-    }
-
-    try {
-      val raw =
-          withContext(Dispatchers.IO) {
-            client.fetchAiringSchedules(
-                airingAtGreater = airingAtGreater,
-                airingAtLesser = airingAtLesser,
-                accessToken = token,
-            )
-          }
-      val filtered =
-          raw
-              .asSequence()
-              .filter { CalendarWeek.matchesContentFilters(it, settings.libraryFilters()) }
-              .filter { entry ->
-                if (settings.sourceMode != SourceMode.PERSONAL) {
-                  true
-                } else {
-                  entry.isOnList && entry.listStatus in settings.listStatuses
-                }
-              }
-              .toList()
-      val sorted = CalendarWeek.sortEntries(filtered, settings.librarySort)
-      val loaded =
-          CalendarWeekState(
-              weekStart = weekStart,
-              entries = sorted,
-              isCurrentWeek = calendarWeekOffset == 0,
-          )
-      calendarMemoryCache[cacheKey] = loaded
-      calendarWeekCache.save(cacheKey, weekStart, sorted)
-      if (calendarWeekStart(settings) == weekStart) {
-        _calendarState.value = loaded
-      }
-      _state.value = UiState.Showing(slides = emptyList(), fromCache = false)
-      prefetchAdjacentCalendarWeeks(settings, weekStart)
-    } catch (e: Throwable) {
-      when (e) {
-        is IOException, is JSONException -> {
-          if (isAniListAuthFailure(e)) {
-            clearSessionFromStorage()
-            _calendarState.value = null
-            _state.value =
-                needsSignIn(userVisibleError(e, "Your AniList sign-in expired. Sign in again."))
-            return
-          }
-          if (_calendarState.value == null) {
-            _state.value =
-                UiState.Error(userVisibleError(e, "Could not load airing schedule"), canOpenSettings = true)
-          } else if (!hasVisibleData) {
-            val stale = calendarWeekCache.loadStale(cacheKey)
-            if (stale != null && stale.weekStart == weekStart) {
-              val fallback =
-                  CalendarWeekState(
-                      weekStart = weekStart,
-                      entries = stale.entries,
-                      isCurrentWeek = calendarWeekOffset == 0,
-                      fromCache = true,
-                  )
-              calendarMemoryCache[cacheKey] = fallback
-              if (calendarWeekStart(settings) == weekStart) {
-                _calendarState.value = fallback
-              }
-            }
-          }
-        }
-        else -> throw e
-      }
-    } finally {
-      if (calendarWeekStart(settings) == weekStart) {
-        _calendarLoading.value = false
-      }
-    }
-  }
-
-  private fun prefetchAdjacentCalendarWeeks(settings: AppSettings, weekStart: LocalDate) {
-    viewModelScope.launch {
-      for (delta in listOf(-1L, 1L)) {
-        val adjacent = weekStart.plusWeeks(delta)
-        val key = settings.calendarCacheKey(adjacent.toEpochDay())
-        if (calendarMemoryCache.containsKey(key)) continue
-        val diskCached = calendarWeekCache.load(key) ?: calendarWeekCache.loadStale(key)
-        if (diskCached != null && diskCached.weekStart == adjacent) {
-          calendarMemoryCache[key] =
-              CalendarWeekState(
-                  weekStart = adjacent,
-                  entries = diskCached.entries,
-                  isCurrentWeek = calendarWeekOffset == 0 && adjacent == calendarWeekStart(settings),
-                  fromCache = true,
-              )
-          continue
-        }
-        runCatching { fetchAndStoreCalendarWeek(settings, adjacent) }
-      }
-    }
-  }
-
-  private suspend fun fetchAndStoreCalendarWeek(settings: AppSettings, weekStart: LocalDate) {
-    val token = tokens.accessToken()
-    if (settings.sourceMode == SourceMode.PERSONAL && token == null) return
-
-    val zone = ZoneId.systemDefault()
-    val weekEnd = weekStart.plusDays(6)
-    val airingAtGreater = weekStart.atStartOfDay(zone).toEpochSecond().toInt()
-    val airingAtLesser = weekEnd.atTime(23, 59, 59).atZone(zone).toEpochSecond().toInt()
-    val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
-
-    val raw =
-        withContext(Dispatchers.IO) {
-          client.fetchAiringSchedules(
-              airingAtGreater = airingAtGreater,
-              airingAtLesser = airingAtLesser,
-              accessToken = token,
-          )
-        }
-    val filtered =
-        raw
-            .asSequence()
-            .filter { CalendarWeek.matchesContentFilters(it, settings.libraryFilters()) }
-            .filter { entry ->
-              if (settings.sourceMode != SourceMode.PERSONAL) {
-                true
-              } else {
-                entry.isOnList && entry.listStatus in settings.listStatuses
-              }
-            }
-            .toList()
-    val sorted = CalendarWeek.sortEntries(filtered, settings.librarySort)
-    val loaded =
-        CalendarWeekState(
-            weekStart = weekStart,
-            entries = sorted,
-            isCurrentWeek = calendarWeekStart(settings) == weekStart,
-        )
-    calendarMemoryCache[cacheKey] = loaded
-    calendarWeekCache.save(cacheKey, weekStart, sorted)
-  }
-
   private suspend fun loadSlides(showLoading: Boolean) {
     if (_settings.value.frameMode == FrameMode.CALENDAR) {
-      loadCalendarWeek(showLoading)
+      calendar.loadWeek(showLoading)
       return
     }
     val settings = _settings.value
