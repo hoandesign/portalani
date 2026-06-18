@@ -18,6 +18,20 @@
 # WorkManager periodic screensaver guard.
 -keep class com.portal.portalani.ScreensaverGuardWorker { *; }
 
+# WorkManager + Room (release crash: WorkDatabase / InitializationProvider).
+-keep class * extends androidx.work.ListenableWorker { *; }
+-keep class * extends androidx.work.Worker { *; }
+-keep class * extends androidx.work.InputMerger { *; }
+-keep class androidx.work.impl.** { *; }
+-keep class androidx.work.** { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep @androidx.room.Entity class *
+-keepclassmembers class * {
+    @androidx.room.* <fields>;
+    @androidx.room.* <methods>;
+}
+-keep class androidx.startup.** { *; }
+
 # org.json parsing (AniList GraphQL responses, cache serialization).
 -keep class org.json.** { *; }
 
