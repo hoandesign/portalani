@@ -21,6 +21,32 @@ import androidx.compose.ui.unit.sp
 import com.portal.portalani.R
 
 @Composable
+internal fun SigningInScreen(
+    onCancel: () -> Unit,
+) {
+  Column(
+      modifier = Modifier.fillMaxSize().padding(top = 64.dp, start = 48.dp, end = 48.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center,
+  ) {
+    Text("Portal Ani", color = PortalAniColors.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(24.dp))
+    Text(
+        stringResource(R.string.sign_in_hint),
+        color = PortalAniColors.TextMuted,
+        fontSize = 20.sp,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.height(32.dp))
+    PortalSecondaryButton(
+        text = stringResource(R.string.cancel_sign_in),
+        onClick = onCancel,
+        modifier = Modifier.width(360.dp),
+    )
+  }
+}
+
+@Composable
 internal fun SetupScreen(
     message: String,
     canSignIn: Boolean,

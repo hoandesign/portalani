@@ -5,6 +5,7 @@
     <string name="sign_in">Sign in with AniList</string>
     <string name="signing_in">Opening AniList sign-in…</string>
     <string name="sign_in_hint">Approve access in the browser, then return here.</string>
+    <string name="cancel_sign_in">Back to sign in</string>
     <string name="loading">Loading anime…</string>
     <string name="no_images">No banner images found for this list.</string>
     <string name="settings">Settings</string>

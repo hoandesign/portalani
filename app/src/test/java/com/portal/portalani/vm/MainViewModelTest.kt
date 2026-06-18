@@ -7,6 +7,7 @@ import com.portal.portalani.MainViewModelDeps
 import com.portal.portalani.UiState
 import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
+import com.portal.portalani.data.AniListHttpException
 import com.portal.portalani.data.CalendarWeekCache
 import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
@@ -14,6 +15,7 @@ import com.portal.portalani.data.FrameMode
 import com.portal.portalani.data.SettingsStore
 import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.TokenStore
+import com.portal.portalani.data.ViewerProfile
 import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.sampleCalendarEntry
 import com.portal.portalani.data.sampleSlide
@@ -21,7 +23,9 @@ import java.io.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -131,6 +135,74 @@ class MainViewModelTest {
     val state = awaitState(vm, UiState.NeedsSetup::class.java)
     assertTrue(state.message.contains("Sign in"))
     assertTrue(state.canUseLibrary)
+  }
+
+  @Test
+  fun cancelSignIn_restoresNeedsSetup() {
+    val vm =
+        createViewModel(
+            settings = AppSettings(sourceMode = SourceMode.PERSONAL),
+        )
+
+    vm.refresh()
+    val setup = awaitState(vm, UiState.NeedsSetup::class.java)
+
+    vm.signIn()
+    assertTrue(vm.state.value is UiState.SigningIn)
+
+    vm.cancelSignIn()
+
+    val restored = awaitState(vm, UiState.NeedsSetup::class.java)
+    assertEquals(setup.message, restored.message)
+    assertTrue(restored.canSignIn)
+  }
+
+  @Test
+  fun personalWithToken_networkError_showsErrorAndKeepsSession() {
+    TokenStore(app).apply {
+      saveAccessToken("test-token")
+      saveViewer(ViewerProfile(id = 7, name = "Hoan"))
+    }
+    val fakeClient =
+        FakeAniListClient().apply {
+          viewerListPagesError = IOException("network down")
+        }
+    val vm =
+        createViewModel(
+            settings = AppSettings(sourceMode = SourceMode.PERSONAL),
+            fakeClient = fakeClient,
+        )
+
+    vm.refresh()
+
+    val state = awaitState(vm, UiState.Error::class.java)
+    assertTrue(state.message.contains("network down"))
+    assertTrue(vm.isSignedIn.value)
+    assertEquals("test-token", TokenStore(app).accessToken())
+  }
+
+  @Test
+  fun personalWithToken_authFailure_clearsSession() {
+    TokenStore(app).apply {
+      saveAccessToken("expired-token")
+      saveViewer(ViewerProfile(id = 7, name = "Hoan"))
+    }
+    val fakeClient =
+        FakeAniListClient().apply {
+          viewerListPagesError = AniListHttpException(401, "Unauthorized")
+        }
+    val vm =
+        createViewModel(
+            settings = AppSettings(sourceMode = SourceMode.PERSONAL),
+            fakeClient = fakeClient,
+        )
+
+    vm.refresh()
+
+    val state = awaitState(vm, UiState.NeedsSetup::class.java)
+    assertTrue(state.message.contains("expired"))
+    assertFalse(vm.isSignedIn.value)
+    assertNull(TokenStore(app).accessToken())
   }
 
   @Test

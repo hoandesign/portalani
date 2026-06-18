@@ -50,6 +50,7 @@ fun PortalAniApp(
     isSignedIn: Boolean,
     userMessage: String?,
     onSignIn: () -> Unit,
+    onCancelSignIn: () -> Unit = {},
     onSignOut: () -> Unit,
     onRetry: () -> Unit,
     onUseLibrary: () -> Unit,
@@ -103,12 +104,14 @@ fun PortalAniApp(
   }
 
   BackHandler(enabled = showSettings) { showSettings = false }
+  BackHandler(enabled = state is UiState.SigningIn && !showSettings) { onCancelSignIn() }
 
   Box(modifier = Modifier.fillMaxSize()) {
     Surface(modifier = Modifier.fillMaxSize(), color = PortalAniColors.Background) {
       when (state) {
         UiState.Loading -> AnimeLoadingScreen(frameMode = settings.frameMode)
-        UiState.SigningIn -> AnimeLoadingScreen(message = stringResource(R.string.sign_in_hint))
+        UiState.SigningIn ->
+            SigningInScreen(onCancel = onCancelSignIn)
         is UiState.NeedsSetup ->
             SetupScreen(
                 message = state.message,
