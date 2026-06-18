@@ -76,6 +76,16 @@ Output APK: `app/build/outputs/apk/debug/app-debug.apk`
 
 > **Tip:** If Gradle runs out of memory, always set `GRADLE_OPTS="-Xmx2g"`.
 
+### Compose UI smoke tests (optional)
+
+Three instrumentation tests in `app/src/androidTest/` exercise settings and dialog UI. Start an Android emulator (API 29+ recommended; landscape matches Portal), then run:
+
+```bash
+GRADLE_OPTS="-Xmx2g" ./gradlew connectedDebugAndroidTest
+```
+
+CI runs the same task on an API 29 emulator (landscape) via GitHub Actions; see `.github/workflows/ci.yml`.
+
 ### Optional: launcher icon
 
 ```bash
