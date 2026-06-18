@@ -46,9 +46,13 @@ android {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      if (localProps.getProperty("RELEASE_STORE_FILE") != null) {
-        signingConfig = signingConfigs.getByName("release")
-      }
+      signingConfig =
+          if (localProps.getProperty("RELEASE_STORE_FILE") != null) {
+            signingConfigs.getByName("release")
+          } else {
+            // Sideload-friendly: signed debug key when no release keystore is configured.
+            signingConfigs.getByName("debug")
+          }
     }
   }
   lint {

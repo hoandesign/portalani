@@ -3,7 +3,7 @@
 #   install APK -> grant screensaver permission -> register dream service -> launch
 #
 # Usage:
-#   scripts/deploy.sh [-s SERIAL] [--apk PATH] [--build]
+#   scripts/deploy.sh [-s SERIAL] [--apk PATH] [--build] [--release]
 set -euo pipefail
 
 PKG="com.portal.portalani"
@@ -14,10 +14,14 @@ if [[ -n "${APK:-}" ]]; then
   :
 elif [[ -f "app/build/outputs/apk/release/app-release.apk" ]]; then
   APK="app/build/outputs/apk/release/app-release.apk"
+elif [[ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]]; then
+  echo "note: unsigned release APK cannot install — use debug or add RELEASE_STORE_FILE (see docs/RELEASE.md)" >&2
+  APK="app/build/outputs/apk/debug/app-debug.apk"
 else
   APK="app/build/outputs/apk/debug/app-debug.apk"
 fi
 DO_BUILD=0
+DO_RELEASE=0
 
 usage() { sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -26,6 +30,7 @@ while [[ $# -gt 0 ]]; do
     -s|--serial) SERIAL="$2"; shift 2;;
     --apk)       APK="$2"; shift 2;;
     --build)     DO_BUILD=1; shift;;
+    --release)   DO_RELEASE=1; DO_BUILD=1; shift;;
     -h|--help)   usage; exit 0;;
     *) echo "unknown arg: $1" >&2; usage >&2; exit 1;;
   esac
@@ -54,8 +59,17 @@ adb() { "$ADB" -s "$SERIAL" "$@"; }
 echo ">> device: $SERIAL"
 
 if [[ $DO_BUILD -eq 1 ]]; then
-  echo ">> ./gradlew assembleDebug"
-  ./gradlew assembleDebug
+  if [[ $DO_RELEASE -eq 1 ]]; then
+    echo ">> ./gradlew assembleRelease"
+    ./gradlew assembleRelease
+    if [[ -f "app/build/outputs/apk/release/app-release.apk" ]]; then
+      APK="app/build/outputs/apk/release/app-release.apk"
+    fi
+  else
+    echo ">> ./gradlew assembleDebug"
+    ./gradlew assembleDebug
+    APK="app/build/outputs/apk/debug/app-debug.apk"
+  fi
 elif [[ ! -f "$APK" ]]; then
   echo ">> APK missing — ./gradlew assembleDebug"
   ./gradlew assembleDebug

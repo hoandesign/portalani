@@ -44,7 +44,7 @@ R8 minify and resource shrinking are **enabled** for release. Run the full test 
 
 ## Signing (optional but recommended)
 
-Without signing config, Gradle produces an **unsigned** release APK. For a installable signed APK, add to `local.properties` (never commit):
+Without a release keystore in `local.properties`, Gradle signs release builds with the **debug key** so sideload installs work. For your own production key, add to `local.properties` (never commit):
 
 ```properties
 RELEASE_STORE_FILE=/path/to/portalani-release.keystore
@@ -70,14 +70,20 @@ Then rebuild `assembleRelease`. Gradle picks up the signing config automatically
 
 ## Deploy to Portal
 
-USB deploy (prefers release APK if present):
+USB deploy (minified release build):
+
+```bash
+bash scripts/deploy.sh --release
+```
+
+Or manually:
 
 ```bash
 GRADLE_OPTS="-Xmx4g" ./gradlew assembleRelease
 bash scripts/deploy.sh --apk app/build/outputs/apk/release/app-release.apk
 ```
 
-Or build debug for day-to-day dev:
+Build debug for day-to-day dev:
 
 ```bash
 bash scripts/deploy.sh --build
@@ -89,7 +95,7 @@ After switching between debug and release signatures, `deploy.sh` may uninstall 
 
 ## CI
 
-GitHub Actions runs `test`, `assembleDebug`, and `assembleRelease` on every push/PR. CI does not use a release keystore; the release APK from CI is unsigned but validates that R8 minify succeeds.
+GitHub Actions runs `test`, `assembleDebug`, and `assembleRelease` on every push/PR. Release builds use the debug signing key when no `RELEASE_STORE_FILE` is set, so R8 minify is validated on a signed artifact.
 
 ---
 
