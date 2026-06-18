@@ -11,8 +11,9 @@ import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.portal.portalani.data.AniListAuth
+import com.portal.portalani.data.AniListAuthPort
 import com.portal.portalani.data.AniListClient
+import com.portal.portalani.data.AniListClientPort
 import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
@@ -40,7 +41,6 @@ import com.portal.portalani.data.toPlaceholderSlide
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,20 +82,19 @@ data class CalendarWeekState(
     val fromCache: Boolean = false,
 )
 
-class MainViewModel(app: Application) : AndroidViewModel(app) {
-  private val http =
-      OkHttpClient.Builder()
-          .callTimeout(60, TimeUnit.SECONDS)
-          .readTimeout(45, TimeUnit.SECONDS)
-          .build()
-
-  private val tokens = TokenStore(app)
-  private val settingsStore = SettingsStore(app)
-  private val slideCache = AnimeSlideCache(app)
-  private val calendarWeekCache = CalendarWeekCache(app)
-  private val auth = AniListAuth(http, tokens)
-  private val client = AniListClient(http)
-  private val weatherClient = WeatherClient(http)
+class MainViewModel internal constructor(
+    app: Application,
+    deps: MainViewModelDeps,
+    runBootstrap: Boolean,
+) : AndroidViewModel(app) {
+  private val tokens = deps.tokens
+  private val settingsStore = deps.settingsStore
+  private val slideCache = deps.slideCache
+  private val calendarWeekCache = deps.calendarWeekCache
+  private val auth: AniListAuthPort = deps.auth
+  private val client: AniListClientPort = deps.client
+  private val weatherClient = deps.weatherClient
+  private val http = deps.http
 
   private val _state = MutableStateFlow<UiState>(UiState.Loading)
   val state: StateFlow<UiState> = _state.asStateFlow()
@@ -151,11 +150,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private var activeFeedKey: String? = null
 
   init {
-    ScreensaverGuardWorker.schedule(app)
-    ScreensaverGuard.applyNow(app)
-    refresh()
-    weatherLoop()
+    if (runBootstrap) {
+      val application = getApplication<Application>()
+      ScreensaverGuardWorker.schedule(application)
+      ScreensaverGuard.applyNow(application)
+      refresh()
+      weatherLoop()
+    }
   }
+
+  constructor(app: Application) : this(app, MainViewModelDeps.live(app), runBootstrap = true)
 
   fun refresh(forceReload: Boolean = false) {
     viewModelScope.launch {

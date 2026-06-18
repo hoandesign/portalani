@@ -44,6 +44,11 @@ android {
     compose = true
     buildConfig = true
   }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+    }
+  }
 }
 
 dependencies {
@@ -65,6 +70,9 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.coil.compose)
   testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.androidx.arch.core.testing)
+  testImplementation(libs.robolectric)
   // Real org.json for JVM unit tests (Android SDK stubs throw "not mocked").
   testImplementation("org.json:json:20240303")
   androidTestImplementation(platform(libs.androidx.compose.bom))

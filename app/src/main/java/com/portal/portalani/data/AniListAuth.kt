@@ -13,13 +13,13 @@ import org.json.JSONObject
 class AniListAuth(
     private val http: OkHttpClient,
     private val tokens: TokenStore,
-) {
+) : AniListAuthPort {
   val redirectUri: String = BuildConfig.ANILIST_REDIRECT_URI
 
-  fun isConfigured(): Boolean =
+  override fun isConfigured(): Boolean =
       BuildConfig.ANILIST_CLIENT_ID.isNotBlank() && BuildConfig.ANILIST_CLIENT_SECRET.isNotBlank()
 
-  fun buildAuthorizeUrl(state: String): Uri =
+  override fun buildAuthorizeUrl(state: String): Uri =
       Uri.parse(AUTHORIZE_URL)
           .buildUpon()
           .appendQueryParameter("client_id", BuildConfig.ANILIST_CLIENT_ID)
@@ -29,7 +29,7 @@ class AniListAuth(
           .build()
 
   @Throws(IOException::class)
-  fun exchangeCode(code: String): String {
+  override fun exchangeCode(code: String): String {
     val body =
         JSONObject()
             .put("grant_type", "authorization_code")
@@ -60,7 +60,7 @@ class AniListAuth(
     }
   }
 
-  fun parseCallback(uri: Uri): CallbackData? {
+  override fun parseCallback(uri: Uri): CallbackData? {
     if (uri.scheme != "portalani" || uri.host != "callback") return null
     return CallbackData(
         code = uri.getQueryParameter("code"),

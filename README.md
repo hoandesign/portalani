@@ -31,13 +31,15 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 ## Testing
 
-Run unit tests (filters, season encoding, calendar math, cache JSON, AniList parsing):
+Run unit tests (filters, season encoding, calendar math, cache JSON, AniList parsing, MainViewModel reload/OAuth/calendar paths):
 
 ```bash
-GRADLE_OPTS="-Xmx2g" ./gradlew test
+GRADLE_OPTS="-Xmx4g" ./gradlew test
 ```
 
-GitHub Actions runs the same command on every push to `main` and on pull requests (no AniList secrets required for compile/test).
+**79 JVM unit tests** — 71 data-layer tests plus 8 `MainViewModel` behavioral tests (Robolectric + fake AniList client).
+
+GitHub Actions runs `./gradlew test assembleDebug` on every push to `main` and on pull requests (no AniList secrets required for compile/test).
 
 **Production hardening (tests, CI, code quality):** see [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md) and [AGENTS.md](AGENTS.md).
 
