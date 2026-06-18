@@ -8,7 +8,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.9.34
+**Version:** 0.10.0
 
 ## Features
 
@@ -42,6 +42,8 @@ GRADLE_OPTS="-Xmx4g" ./gradlew test
 GitHub Actions runs `./gradlew test assembleDebug` on every push to `main` and on pull requests (no AniList secrets required for compile/test).
 
 **Production hardening (tests, CI, code quality):** see [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md) and [AGENTS.md](AGENTS.md).
+
+**Release APK (R8 minify):** see [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Gestures on Portal
 

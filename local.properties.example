@@ -8,3 +8,9 @@ sdk.dir=/Users/YOU/Library/Android/sdk
 # Redirect URL must be exactly: portalani://callback
 ANILIST_CLIENT_ID=your_client_id_here
 ANILIST_CLIENT_SECRET=your_client_secret_here
+
+# Optional — release APK signing (see docs/RELEASE.md). Never commit the keystore.
+# RELEASE_STORE_FILE=/path/to/portalani-release.keystore
+# RELEASE_STORE_PASSWORD=
+# RELEASE_KEY_ALIAS=portalani
+# RELEASE_KEY_PASSWORD=

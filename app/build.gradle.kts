@@ -22,19 +22,38 @@ android {
     applicationId = "com.portal.portalani"
     minSdk = 28
     targetSdk = 29
-    versionCode = 82
-    versionName = "0.9.34"
+    versionCode = 83
+    versionName = "0.10.0"
 
     buildConfigField("String", "ANILIST_CLIENT_ID", "\"$anilistClientId\"")
     buildConfigField("String", "ANILIST_CLIENT_SECRET", "\"$anilistClientSecret\"")
     buildConfigField("String", "ANILIST_REDIRECT_URI", "\"portalani://callback\"")
   }
 
+  signingConfigs {
+    create("release") {
+      val storePath = localProps.getProperty("RELEASE_STORE_FILE")
+      if (storePath != null) {
+        storeFile = rootProject.file(storePath)
+        storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD")
+        keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS")
+        keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD")
+      }
+    }
+  }
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      if (localProps.getProperty("RELEASE_STORE_FILE") != null) {
+        signingConfig = signingConfigs.getByName("release")
+      }
     }
+  }
+  lint {
+    // Portal sideload target; Play Store is not the distribution channel today.
+    disable += "ExpiredTargetSdkVersion"
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
