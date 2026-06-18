@@ -1,0 +1,61 @@
+{
+  "media": [
+    {
+      "id": 15125,
+      "title": {
+        "romaji": "Test Romaji Title",
+        "english": "Test English Title",
+        "native": "テスト"
+      },
+      "bannerImage": "https://example.com/banner.jpg",
+      "coverImage": {
+        "extraLarge": "https://example.com/cover-xl.jpg",
+        "large": "https://example.com/cover-lg.jpg",
+        "medium": "https://example.com/cover-md.jpg"
+      },
+      "averageScore": 82,
+      "episodes": 24,
+      "status": "RELEASING",
+      "nextAiringEpisode": {
+        "episode": 8,
+        "airingAt": 1700000000
+      },
+      "season": "SPRING",
+      "seasonYear": 2024,
+      "startDate": {
+        "year": 2024,
+        "month": 4,
+        "day": 5
+      },
+      "format": "TV",
+      "countryOfOrigin": "JP",
+      "source": "MANGA",
+      "tags": [
+        { "name": "Shounen" },
+        { "name": "School" }
+      ],
+      "genres": ["Action", "Comedy"],
+      "studios": {
+        "nodes": [{ "name": "Test Studio" }]
+      },
+      "description": "A <i>test</i> synopsis.",
+      "siteUrl": "https://anilist.co/anime/15125",
+      "trailer": {
+        "id": "dQw4w9WgXcQ",
+        "site": "youtube"
+      },
+      "rankings": [
+        {
+          "rank": 42,
+          "type": "RATED",
+          "allTime": true
+        },
+        {
+          "rank": 10,
+          "type": "POPULAR",
+          "year": 2024
+        }
+      ]
+    }
+  ]
+}
