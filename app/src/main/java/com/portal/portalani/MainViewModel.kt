@@ -36,9 +36,9 @@ import com.portal.portalani.data.TokenStore
 import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.WeatherNow
 import com.portal.portalani.data.WeekStart
+import com.portal.portalani.vm.AniListSessionHandler
 import com.portal.portalani.vm.CalendarCoordinator
 import java.io.IOException
-import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,6 +103,33 @@ class MainViewModel internal constructor(
   private val _userMessage = MutableStateFlow<String?>(null)
   val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
+  private val session =
+      AniListSessionHandler(
+          application = getApplication(),
+          scope = viewModelScope,
+          tokens = tokens,
+          auth = auth,
+          client = client,
+          getState = { _state.value },
+          setState = { _state.value = it },
+          getSettings = { _settings.value },
+          onViewerNameChanged = { _viewerName.value = it },
+          onSignedInChanged = { _isSignedIn.value = it },
+          onLaunchOAuth = { intent -> getApplication<Application>().startActivity(intent) },
+          onBringAppToFront = {
+            val ctx = getApplication<Application>()
+            ctx.startActivity(
+                Intent(ctx, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            )
+          },
+          onOAuthSuccess = {
+            updateSettings(_settings.value.copy(sourceMode = SourceMode.PERSONAL))
+            loadSlides(showLoading = true)
+          },
+          onCancelSignInReload = { loadSlides(showLoading = false) },
+      )
+
   private val calendar =
       CalendarCoordinator(
           scope = viewModelScope,
@@ -113,8 +140,8 @@ class MainViewModel internal constructor(
           isAuthConfigured = { auth.isConfigured() },
           onRootState = { _state.value = it },
           onSessionExpired = { message ->
-            clearSessionFromStorage()
-            _state.value = needsSignIn(message)
+            session.clearSessionFromStorage()
+            _state.value = session.needsSignIn(message)
           },
           onUserMessage = { _userMessage.value = it },
       )
@@ -135,9 +162,6 @@ class MainViewModel internal constructor(
   val calendarLoading = calendar.calendarLoading
   val calendarDetailSlide = calendar.calendarDetailSlide
   val calendarDetailLoading = calendar.calendarDetailLoading
-
-  private var pendingOAuthState: String? = null
-  private var stateBeforeSignIn: UiState? = null
 
   private var feedNextPage = 1
   private var feedHasMore = false
@@ -199,120 +223,20 @@ class MainViewModel internal constructor(
     }
   }
 
-  fun signIn() {
-    if (!auth.isConfigured()) {
-      _state.value =
-          UiState.NeedsSetup(
-              message = missingCredentialsMessage(),
-              canSignIn = false,
-              canUseLibrary = true,
-          )
-      return
-    }
-    val state = UUID.randomUUID().toString()
-    pendingOAuthState = state
-    tokens.saveOAuthState(state)
-    stateBeforeSignIn = _state.value.takeUnless { it is UiState.SigningIn }
-    _state.value = UiState.SigningIn
-    val authUrl = auth.buildAuthorizeUrl(state).toString()
-    val ctx = getApplication<Application>()
-    val intent =
-        Intent(ctx, AniListOAuthActivity::class.java)
-            .putExtra(AniListOAuthActivity.EXTRA_AUTH_URL, authUrl)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    ctx.startActivity(intent)
-  }
+  fun signIn() = session.signIn()
 
-  fun cancelSignIn() {
-    if (_state.value !is UiState.SigningIn) return
-    pendingOAuthState = null
-    tokens.clearOAuthState()
-    val restore = stateBeforeSignIn?.takeUnless { it is UiState.SigningIn }
-    stateBeforeSignIn = null
-    if (restore != null) {
-      _state.value = restore
-      return
-    }
-    val token = tokens.accessToken()
-    val settings = _settings.value
-    if (settings.sourceMode == SourceMode.PERSONAL && token == null) {
-      _state.value =
-          needsSignIn(
-              if (settings.frameMode == FrameMode.CALENDAR) {
-                "Sign in to show your list schedule on the calendar."
-              } else {
-                "Sign in to show anime from your personal AniList."
-              },
-          )
-    } else {
-      viewModelScope.launch { loadSlides(showLoading = false) }
-    }
-  }
+  fun cancelSignIn() = session.cancelSignIn()
 
-  fun handleOAuthCallback(uri: android.net.Uri) {
-    val callback = auth.parseCallback(uri) ?: return
-    if (!callback.error.isNullOrBlank()) {
-      stateBeforeSignIn = null
-      _state.value = UiState.Error("AniList sign-in failed: ${callback.error}")
-      pendingOAuthState = null
-      tokens.clearOAuthState()
-      return
-    }
-    val expected = pendingOAuthState ?: tokens.peekOAuthState()
-    pendingOAuthState = null
-    tokens.clearOAuthState()
-    if (expected == null || callback.state != expected) {
-      stateBeforeSignIn = null
-      _state.value = UiState.Error("Sign-in state mismatch. Please try again.")
-      return
-    }
-    val code = callback.code
-    if (code.isNullOrBlank()) {
-      _state.value = UiState.Error("No authorization code received.")
-      return
-    }
-    viewModelScope.launch {
-      _state.value = UiState.Loading
-      stateBeforeSignIn = null
-      try {
-        withContext(Dispatchers.IO) {
-          val token = auth.exchangeCode(code)
-          val viewer = client.fetchViewer(token)
-          tokens.saveViewer(viewer)
-        }
-        _viewerName.value = tokens.viewerName()
-        _isSignedIn.value = true
-        updateSettings(_settings.value.copy(sourceMode = SourceMode.PERSONAL))
-        bringAppToFront()
-        loadSlides(showLoading = true)
-      } catch (e: IOException) {
-        _state.value = UiState.Error(userVisibleError(e, "Sign-in failed"))
-      } catch (e: JSONException) {
-        _state.value = UiState.Error(userVisibleError(e, "Sign-in failed"))
-      }
-    }
-  }
+  fun handleOAuthCallback(uri: android.net.Uri) = session.handleOAuthCallback(uri)
 
   fun signOut() {
-    clearSessionFromStorage()
-    if (_settings.value.sourceMode == SourceMode.PERSONAL) {
-      updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
+    session.signOut {
+      if (_settings.value.sourceMode == SourceMode.PERSONAL) {
+        updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
+      }
+      refresh(forceReload = true)
     }
-    refresh(forceReload = true)
   }
-
-  private fun clearSessionFromStorage() {
-    tokens.clear()
-    _viewerName.value = null
-    _isSignedIn.value = false
-  }
-
-  private fun needsSignIn(message: String) =
-      UiState.NeedsSetup(
-          message = message,
-          canSignIn = auth.isConfigured(),
-          canUseLibrary = true,
-      )
 
   fun useLibrary() {
     updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
@@ -847,9 +771,9 @@ class MainViewModel internal constructor(
             return
           }
           if (isAniListAuthFailure(e)) {
-            clearSessionFromStorage()
+            session.clearSessionFromStorage()
             _state.value =
-                needsSignIn(userVisibleError(e, "Your AniList sign-in expired. Sign in again."))
+                session.needsSignIn(userVisibleError(e, "Your AniList sign-in expired. Sign in again."))
             return
           }
           if (settings.sourceMode == SourceMode.PERSONAL && token != null) {
@@ -994,14 +918,6 @@ class MainViewModel internal constructor(
     const val LOAD_MORE_THRESHOLD = 8
   }
 
-  private fun bringAppToFront() {
-    val ctx = getApplication<Application>()
-    val intent =
-        Intent(ctx, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-    ctx.startActivity(intent)
-  }
-
   private fun personalListEmptyMessage(statuses: Set<ListStatus>, filtersExcludedAll: Boolean = false): String {
     if (filtersExcludedAll) {
       return "Nothing on your lists matches the current filters. Try broader filters in Settings, or switch to Full library."
@@ -1024,10 +940,4 @@ class MainViewModel internal constructor(
         }
     return "Your \"$label\" list is empty on AniList. Try another list status in Settings, or add anime on anilist.co."
   }
-
-  private fun missingCredentialsMessage(): String =
-      "Add your AniList OAuth client to local.properties, then rebuild:\n\n" +
-          "ANILIST_CLIENT_ID=...\n" +
-          "ANILIST_CLIENT_SECRET=...\n\n" +
-          "Redirect URI must be portalani://callback"
 }
