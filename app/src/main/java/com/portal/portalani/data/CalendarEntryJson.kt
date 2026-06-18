@@ -64,9 +64,7 @@ internal fun JSONObject.toCalendarAiringEntryOrNull(): CalendarAiringEntry? {
       averageScore = optInt("averageScore").takeIf { it > 0 },
       popularity = optInt("popularity").takeIf { it > 0 },
       listStatus =
-          optString("listStatus").takeIf { it.isNotBlank() && it != "null" }?.let {
-            runCatching { ListStatus.valueOf(it) }.getOrNull()
-          },
+          optString("listStatus").takeIf { it.isNotBlank() && it != "null" }?.let { enumValueOrNull<ListStatus>(it) },
       genres = genres,
   )
 }

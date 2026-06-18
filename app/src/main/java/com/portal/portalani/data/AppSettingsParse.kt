@@ -100,8 +100,3 @@ internal fun parseAppSettings(
       hideHentai = getBoolean(SettingsStore.KEY_HIDE_HENTAI, true),
   )
 }
-
-private inline fun <reified T : Enum<T>> enumValueOrNull(raw: String?): T? {
-  if (raw.isNullOrBlank()) return null
-  return runCatching { enumValueOf<T>(raw) }.getOrNull()
-}
