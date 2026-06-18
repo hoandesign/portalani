@@ -22,6 +22,7 @@ class FakeAniListClient(
   var fetchAiringSchedulesCalls = 0
   var fetchViewerCalls = 0
   var libraryPagesError: IOException? = null
+  var viewerListPagesError: IOException? = null
 
   override fun fetchViewer(accessToken: String): ViewerProfile {
     fetchViewerCalls++
@@ -49,6 +50,7 @@ class FakeAniListClient(
       perPage: Int,
   ): FetchBatchResult {
     fetchViewerListPagesCalls++
+    viewerListPagesError?.let { throw it }
     return viewerListPagesResult
   }
 

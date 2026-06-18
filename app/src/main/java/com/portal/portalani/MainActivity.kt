@@ -37,7 +37,11 @@ class MainActivity : ComponentActivity() {
         this,
         object : OnBackPressedCallback(true) {
           override fun handleOnBackPressed() {
-            moveTaskToBack(true)
+            if (vm.state.value is UiState.SigningIn) {
+              vm.cancelSignIn()
+            } else {
+              moveTaskToBack(true)
+            }
           }
         },
     )
@@ -90,6 +94,7 @@ class MainActivity : ComponentActivity() {
             isSignedIn = isSignedIn,
             userMessage = userMessage,
             onSignIn = vm::signIn,
+            onCancelSignIn = vm::cancelSignIn,
             onSignOut = vm::signOut,
             onRetry = vm::refresh,
             onUseLibrary = vm::useLibrary,
@@ -174,6 +179,11 @@ class MainActivity : ComponentActivity() {
   }
 
   private fun handleIntent(intent: Intent?) {
+    if (intent?.getBooleanExtra(EXTRA_OAUTH_CANCELLED, false) == true) {
+      vm.cancelSignIn()
+      setIntent(intent.apply { removeExtra(EXTRA_OAUTH_CANCELLED) })
+      return
+    }
     val data: Uri = intent?.data ?: return
     if (data.scheme != "portalani") return
     vm.handleOAuthCallback(data)
@@ -189,5 +199,6 @@ class MainActivity : ComponentActivity() {
 
   companion object {
     const val EXTRA_DREAM_MODE = "dream_mode"
+    const val EXTRA_OAUTH_CANCELLED = "oauth_cancelled"
   }
 }

@@ -80,17 +80,26 @@ fi
 [[ -f "$APK" ]] || { echo "APK not found: $APK (run with --build)" >&2; exit 1; }
 
 echo ">> install $APK"
-if adb install -r "$APK" 2>&1 | tee /tmp/portalani-install.log | grep -q "Success"; then
-  echo "   ok"
-else
-  if grep -qiE "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match" /tmp/portalani-install.log; then
-    echo "   signature mismatch — reinstalling (settings/tokens in app storage may be lost)"
+INSTALL_LOG="$(mktemp)"
+trap 'rm -f "$INSTALL_LOG"' EXIT
+if adb install -r -d "$APK" >"$INSTALL_LOG" 2>&1; then
+  echo "   ok (existing app data kept)"
+elif grep -qiE "INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match" "$INSTALL_LOG"; then
+  if [[ "${PORTALANI_FORCE_REINSTALL:-0}" == "1" ]]; then
+    echo "   signature mismatch — reinstalling (AniList sign-in and settings will be erased)" >&2
     adb uninstall "$PKG" >/dev/null || true
     adb install "$APK"
   else
-    cat /tmp/portalani-install.log >&2
+    echo "install failed: APK signature does not match the app on your Portal." >&2
+    echo "A full reinstall would erase your AniList sign-in, settings, and offline cache." >&2
+    echo "Fix: use the same APK type you installed before (debug vs release), or run:" >&2
+    echo "  PORTALANI_FORCE_REINSTALL=1 $0 $*" >&2
+    cat "$INSTALL_LOG" >&2
     exit 1
   fi
+else
+  cat "$INSTALL_LOG" >&2
+  exit 1
 fi
 
 echo ">> grant WRITE_SECURE_SETTINGS"

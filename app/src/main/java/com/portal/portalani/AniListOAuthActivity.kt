@@ -49,6 +49,7 @@ class AniListOAuthActivity : ComponentActivity() {
             if (view != null && view.canGoBack()) {
               view.goBack()
             } else {
+              notifySignInCancelled()
               finish()
             }
           }
@@ -98,6 +99,14 @@ class AniListOAuthActivity : ComponentActivity() {
         }
       }
     }
+  }
+
+  private fun notifySignInCancelled() {
+    startActivity(
+        Intent(this, MainActivity::class.java)
+            .putExtra(MainActivity.EXTRA_OAUTH_CANCELLED, true)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+    )
   }
 
   private fun handleRedirect(uri: Uri): Boolean {

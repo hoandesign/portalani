@@ -255,7 +255,7 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
     http.newCall(builder.build()).execute().use { response ->
       val raw = response.body?.string().orEmpty()
       if (!response.isSuccessful) {
-        throw IOException("GraphQL failed (${response.code}): $raw")
+        throw AniListHttpException(response.code, raw)
       }
       val root = JSONObject(raw)
       if (root.has("errors")) {

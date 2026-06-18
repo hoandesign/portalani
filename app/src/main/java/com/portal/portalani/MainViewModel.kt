@@ -143,6 +143,7 @@ class MainViewModel internal constructor(
   }
 
   private var pendingOAuthState: String? = null
+  private var stateBeforeSignIn: UiState? = null
 
   private var feedNextPage = 1
   private var feedHasMore = false
@@ -292,6 +293,7 @@ class MainViewModel internal constructor(
     val state = UUID.randomUUID().toString()
     pendingOAuthState = state
     tokens.saveOAuthState(state)
+    stateBeforeSignIn = _state.value.takeUnless { it is UiState.SigningIn }
     _state.value = UiState.SigningIn
     val authUrl = auth.buildAuthorizeUrl(state).toString()
     val ctx = getApplication<Application>()
@@ -302,9 +304,36 @@ class MainViewModel internal constructor(
     ctx.startActivity(intent)
   }
 
+  fun cancelSignIn() {
+    if (_state.value !is UiState.SigningIn) return
+    pendingOAuthState = null
+    tokens.clearOAuthState()
+    val restore = stateBeforeSignIn?.takeUnless { it is UiState.SigningIn }
+    stateBeforeSignIn = null
+    if (restore != null) {
+      _state.value = restore
+      return
+    }
+    val token = tokens.accessToken()
+    val settings = _settings.value
+    if (settings.sourceMode == SourceMode.PERSONAL && token == null) {
+      _state.value =
+          needsSignIn(
+              if (settings.frameMode == FrameMode.CALENDAR) {
+                "Sign in to show your list schedule on the calendar."
+              } else {
+                "Sign in to show anime from your personal AniList."
+              },
+          )
+    } else {
+      viewModelScope.launch { loadSlides(showLoading = false) }
+    }
+  }
+
   fun handleOAuthCallback(uri: android.net.Uri) {
     val callback = auth.parseCallback(uri) ?: return
     if (!callback.error.isNullOrBlank()) {
+      stateBeforeSignIn = null
       _state.value = UiState.Error("AniList sign-in failed: ${callback.error}")
       pendingOAuthState = null
       tokens.clearOAuthState()
@@ -314,6 +343,7 @@ class MainViewModel internal constructor(
     pendingOAuthState = null
     tokens.clearOAuthState()
     if (expected == null || callback.state != expected) {
+      stateBeforeSignIn = null
       _state.value = UiState.Error("Sign-in state mismatch. Please try again.")
       return
     }
@@ -324,6 +354,7 @@ class MainViewModel internal constructor(
     }
     viewModelScope.launch {
       _state.value = UiState.Loading
+      stateBeforeSignIn = null
       try {
         withContext(Dispatchers.IO) {
           val token = auth.exchangeCode(code)
@@ -344,14 +375,25 @@ class MainViewModel internal constructor(
   }
 
   fun signOut() {
-    tokens.clear()
-    _viewerName.value = null
-    _isSignedIn.value = false
+    clearSessionFromStorage()
     if (_settings.value.sourceMode == SourceMode.PERSONAL) {
       updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
     }
     refresh(forceReload = true)
   }
+
+  private fun clearSessionFromStorage() {
+    tokens.clear()
+    _viewerName.value = null
+    _isSignedIn.value = false
+  }
+
+  private fun needsSignIn(message: String) =
+      UiState.NeedsSetup(
+          message = message,
+          canSignIn = auth.isConfigured(),
+          canUseLibrary = true,
+      )
 
   fun useLibrary() {
     updateSettings(_settings.value.copy(sourceMode = SourceMode.LIBRARY))
@@ -867,6 +909,13 @@ class MainViewModel internal constructor(
     } catch (e: Throwable) {
       when (e) {
         is IOException, is JSONException -> {
+          if (isAniListAuthFailure(e)) {
+            clearSessionFromStorage()
+            _calendarState.value = null
+            _state.value =
+                needsSignIn(userVisibleError(e, "Your AniList sign-in expired. Sign in again."))
+            return
+          }
           if (_calendarState.value == null) {
             _state.value =
                 UiState.Error(userVisibleError(e, "Could not load airing schedule"), canOpenSettings = true)
@@ -1048,16 +1097,20 @@ class MainViewModel internal constructor(
             _state.value = showingState(cachedStale, fromCache = true)
             return
           }
+          if (isAniListAuthFailure(e)) {
+            clearSessionFromStorage()
+            _state.value =
+                needsSignIn(userVisibleError(e, "Your AniList sign-in expired. Sign in again."))
+            return
+          }
           if (settings.sourceMode == SourceMode.PERSONAL && token != null) {
             _state.value =
-                UiState.NeedsSetup(
-                    message =
-                        userVisibleError(
-                            e,
-                            "Could not load your list. Sign in again or switch to Full library.",
-                        ),
-                    canSignIn = auth.isConfigured(),
-                    canUseLibrary = true,
+                UiState.Error(
+                    userVisibleError(
+                        e,
+                        "Could not load your list. Check your connection and try again.",
+                    ),
+                    canOpenSettings = true,
                 )
           } else {
             _state.value = UiState.Error(userVisibleError(e, "Could not load anime"))
