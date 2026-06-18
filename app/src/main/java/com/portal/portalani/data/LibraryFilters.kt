@@ -77,6 +77,12 @@ enum class CountryFilter(val apiValue: String, val label: String) {
   ES("ES", "Spain"),
   ;
 
+  val flagEmoji: String
+    get() = isoCountryFlagEmoji(apiValue)
+
+  val pickerLabel: String
+    get() = if (flagEmoji.isEmpty()) label else "$flagEmoji  $label"
+
   companion object {
     val selectable: List<CountryFilter> = entries.filter { it != ALL }
 
@@ -116,7 +122,14 @@ fun Set<CountryFilter>.matchesMediaCountry(countryOfOrigin: String?): Boolean {
   return normalized.any { it.apiValue.equals(country, ignoreCase = true) }
 }
 
-/** Adaptation source from AniList `MediaSource`. */
+/** Builds a flag emoji from an ISO 3166-1 alpha-2 code (e.g. JP → 🇯🇵). */
+fun isoCountryFlagEmoji(isoCode: String): String {
+  if (isoCode.length != 2) return ""
+  val upper = isoCode.uppercase()
+  if (!upper.all { it in 'A'..'Z' }) return ""
+  return upper.map { char -> String(Character.toChars(0x1F1E6 - 'A'.code + char.code)) }.joinToString("")
+}
+
 enum class SourceFilter(val apiValue: String, val label: String) {
   ALL("", "All sources"),
   ORIGINAL("ORIGINAL", "Original"),

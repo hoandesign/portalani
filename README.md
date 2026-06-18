@@ -7,7 +7,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.9.33
+**Version:** 0.9.34
 
 ## Features
 
@@ -81,6 +81,8 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 | Hide Hentai | Yes | Yes | Yes | Yes |
 
 Personal mode loads your lists from AniList, then applies content filters on the device. Full library can also pre-filter source material via the AniList API; country and demographic are always matched on the device after fetch.
+
+**Filter pickers:** Format, country, source, demographic, and list-status dialogs are centered on screen, scroll when the list is long, and keep **Close** / **Apply** visible at the bottom. Country options show flag emojis (e.g. 🇯🇵 Japan).
 
 ## Security
 

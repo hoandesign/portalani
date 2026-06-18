@@ -78,6 +78,11 @@ object PortalDialogWidths {
   val SeasonPicker = 520.dp
   val Form = 440.dp
   val Rating = 560.dp
+  /** Upper caps for dialog sizing; actual height is derived from screen size in dialogs. */
+  val PickerOptionsList = 320.dp
+  val FilterPickerDialog = 520.dp
+  val PickerDialog = 480.dp
+  val PickerOptionsListCompact = 300.dp
 }
 
 object PortalAniShapes {

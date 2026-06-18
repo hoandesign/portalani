@@ -2,10 +2,13 @@ package com.portal.portalani.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -24,12 +28,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,6 +62,56 @@ import com.portal.portalani.data.SeasonPickerYear
 import com.portal.portalani.data.SeasonSelection
 import kotlin.math.roundToInt
 
+private val LocalPortalDialogBodyMax = compositionLocalOf { 320.dp }
+
+private fun BoxWithConstraintsScope.portalScreenDialogMaxHeight(requestedMax: Dp?): Dp {
+  val screenCap = maxHeight * 0.86f
+  return if (requestedMax != null) minOf(requestedMax, screenCap) else screenCap
+}
+
+private fun portalDialogBodyMaxHeight(
+    dialogMax: Dp,
+    hasSubtitle: Boolean,
+    hasFooter: Boolean,
+): Dp {
+  var reserved = 18.dp + 18.dp + 56.dp + 10.dp
+  if (hasSubtitle) reserved += 34.dp
+  if (hasFooter) reserved += 12.dp + 52.dp
+  return (dialogMax - reserved).coerceAtLeast(180.dp)
+}
+
+@Composable
+private fun PortalCenteredDialog(
+    onDismiss: () -> Unit,
+    content: @Composable BoxWithConstraintsScope.() -> Unit,
+) {
+  Dialog(
+      onDismissRequest = onDismiss,
+      properties =
+          DialogProperties(
+              usePlatformDefaultWidth = false,
+              decorFitsSystemWindows = false,
+          ),
+  ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = Color.Transparent) {
+      BoxWithConstraints(
+          modifier = Modifier.fillMaxSize(),
+          contentAlignment = Alignment.Center,
+          content = content,
+      )
+    }
+  }
+}
+
+private fun Modifier.portalDialogSurface(width: Dp, maxHeight: Dp? = null): Modifier =
+    this
+        .width(width)
+        .wrapContentHeight()
+        .then(if (maxHeight != null) Modifier.heightIn(max = maxHeight) else Modifier)
+        .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
+        .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
+        .padding(horizontal = 22.dp, vertical = 18.dp)
+
 @Composable
 fun PortalPickerDialog(
     title: String,
@@ -67,22 +122,14 @@ fun PortalPickerDialog(
     iconForKey: ((String) -> ImageVector)? = null,
     tintForKey: ((String) -> Color)? = null,
 ) {
-  Dialog(
-      onDismissRequest = onDismiss,
-      properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Column(
-        modifier =
-            Modifier.width(PortalDialogWidths.Picker)
-                .heightIn(max = 460.dp)
-                .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
-                .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
-                .padding(horizontal = 22.dp, vertical = 20.dp),
-    ) {
+  PortalCenteredDialog(onDismiss = onDismiss) {
+    val dialogMax = portalScreenDialogMaxHeight(PortalDialogWidths.PickerDialog)
+    val listMax = portalDialogBodyMaxHeight(dialogMax, hasSubtitle = false, hasFooter = false)
+    Column(modifier = Modifier.portalDialogSurface(PortalDialogWidths.Picker, dialogMax)) {
       PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
-      Spacer(Modifier.height(12.dp))
+      Spacer(Modifier.height(10.dp))
       LazyColumn(
-          modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
+          modifier = Modifier.fillMaxWidth().heightIn(max = listMax),
           verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         items(options, key = { it.first }) { (key, label) ->
@@ -115,29 +162,22 @@ fun PortalSeasonPickerDialog(
   val yearOptions = remember(nowYear) { SeasonSelection.yearColumnOptions(nowYear) }
   val yearColumnEnabled = !draft.season.ignoresYear
 
-  Dialog(
-      onDismissRequest = onDismiss,
-      properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Column(
-        modifier =
-            Modifier.width(PortalDialogWidths.SeasonPicker)
-                .heightIn(max = 520.dp)
-                .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
-                .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
-                .padding(horizontal = 22.dp, vertical = 20.dp),
-    ) {
+  PortalCenteredDialog(onDismiss = onDismiss) {
+    val dialogMax = portalScreenDialogMaxHeight(460.dp)
+    val bodyMax = portalDialogBodyMaxHeight(dialogMax, hasSubtitle = true, hasFooter = true)
+    val pickerListMax = (bodyMax - 48.dp).coerceAtLeast(180.dp)
+    Column(modifier = Modifier.portalDialogSurface(PortalDialogWidths.SeasonPicker, dialogMax)) {
       PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
-      Spacer(Modifier.height(10.dp))
+      Spacer(Modifier.height(8.dp))
       Text(
           text = SeasonSelection.labelFor(draft),
           color = PortalAniColors.Accent,
           fontSize = 17.sp,
           fontWeight = FontWeight.SemiBold,
       )
-      Spacer(Modifier.height(14.dp))
+      Spacer(Modifier.height(10.dp))
       Row(
-          modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+          modifier = Modifier.fillMaxWidth().heightIn(max = pickerListMax),
           horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -147,9 +187,9 @@ fun PortalSeasonPickerDialog(
               fontSize = 14.sp,
               fontWeight = FontWeight.Medium,
           )
-          Spacer(Modifier.height(8.dp))
+          Spacer(Modifier.height(6.dp))
           LazyColumn(
-              modifier = Modifier.fillMaxWidth().heightIn(max = 290.dp),
+              modifier = Modifier.fillMaxWidth().heightIn(max = pickerListMax - 28.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             items(seasonOptions, key = { it.name }) { season ->
@@ -176,9 +216,9 @@ fun PortalSeasonPickerDialog(
               fontSize = 14.sp,
               fontWeight = FontWeight.Medium,
           )
-          Spacer(Modifier.height(8.dp))
+          Spacer(Modifier.height(6.dp))
           LazyColumn(
-              modifier = Modifier.fillMaxWidth().heightIn(max = 290.dp),
+              modifier = Modifier.fillMaxWidth().heightIn(max = pickerListMax - 28.dp),
               verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             items(yearOptions, key = { yearOptionKey(it) }) { year ->
@@ -199,7 +239,7 @@ fun PortalSeasonPickerDialog(
           }
         }
       }
-      Spacer(Modifier.height(16.dp))
+      Spacer(Modifier.height(12.dp))
       Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.End,
@@ -431,38 +471,44 @@ fun PortalFormDialog(
     maxHeight: Dp? = 560.dp,
     subtitle: String? = null,
     footer: @Composable (() -> Unit)? = null,
+    lazyListBody: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-  Dialog(
-      onDismissRequest = onDismiss,
-      properties = DialogProperties(usePlatformDefaultWidth = false),
-  ) {
-    Column(
-        modifier =
-            modifier
-                .width(width)
-                .then(if (maxHeight != null) Modifier.heightIn(max = maxHeight) else Modifier)
-                .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
-                .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
-                .padding(horizontal = 22.dp, vertical = 20.dp),
-    ) {
-      PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
-      if (!subtitle.isNullOrBlank()) {
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = subtitle,
-            color = PortalAniColors.TextMuted,
-            fontSize = 15.sp,
-            lineHeight = 20.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-      }
-      Spacer(Modifier.height(12.dp))
-      content()
-      if (footer != null) {
-        Spacer(Modifier.height(16.dp))
-        footer()
+  PortalCenteredDialog(onDismiss = onDismiss) {
+    val dialogMax = portalScreenDialogMaxHeight(maxHeight)
+    val bodyMax = portalDialogBodyMaxHeight(dialogMax, !subtitle.isNullOrBlank(), footer != null)
+
+    CompositionLocalProvider(LocalPortalDialogBodyMax provides bodyMax) {
+      Column(modifier = modifier.portalDialogSurface(width, dialogMax)) {
+        PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
+        if (!subtitle.isNullOrBlank()) {
+          Spacer(Modifier.height(6.dp))
+          Text(
+              text = subtitle,
+              color = PortalAniColors.TextMuted,
+              fontSize = 14.sp,
+              lineHeight = 18.sp,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+          )
+        }
+        Spacer(Modifier.height(10.dp))
+        if (lazyListBody) {
+          content()
+        } else {
+          Column(
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .heightIn(max = bodyMax)
+                      .verticalScroll(rememberScrollState()),
+          ) {
+            content()
+          }
+        }
+        if (footer != null) {
+          Spacer(Modifier.height(12.dp))
+          footer()
+        }
       }
     }
   }
@@ -634,60 +680,16 @@ fun FormatFiltersDialog(
     onDismiss: () -> Unit,
     onApply: (Set<FormatFilter>) -> Unit,
 ) {
-  var draft by remember(selected) { mutableStateOf(FormatFilter.normalizeSelection(selected)) }
-
-  PortalFormDialog(
+  MultiSelectFilterDialog(
       title = stringResource(R.string.format_filter),
-      subtitle = stringResource(R.string.library_filters),
+      hint = stringResource(R.string.format_filters_picker_hint),
+      options = FormatFilter.selectable,
+      labelOf = { it.label },
+      selected = selected,
+      normalize = FormatFilter::normalizeSelection,
       onDismiss = onDismiss,
-      width = PortalDialogWidths.Picker,
-      maxHeight = null,
-  ) {
-    Text(
-        stringResource(R.string.format_filters_picker_hint),
-        color = PortalAniColors.TextMuted,
-        fontSize = 14.sp,
-        lineHeight = 19.sp,
-    )
-    Spacer(Modifier.height(14.dp))
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      FormatFilter.selectable.forEach { format ->
-        val isSelected = format in draft
-        PortalPickerOptionRow(
-            label = format.label,
-            selected = isSelected,
-            onClick = {
-              draft =
-                  if (isSelected) {
-                    if (draft.size == 1) draft else draft - format
-                  } else {
-                    draft + format
-                  }
-            },
-        )
-      }
-    }
-    Spacer(Modifier.height(16.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-    ) {
-      PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
-      Spacer(Modifier.width(10.dp))
-      PortalPrimaryButton(
-          text = stringResource(R.string.apply),
-          onClick = {
-            if (draft.isNotEmpty()) {
-              onApply(draft)
-            }
-            onDismiss()
-          },
-      )
-    }
-  }
+      onApply = onApply,
+  )
 }
 
 @Composable
@@ -710,8 +712,8 @@ fun countryFiltersSettingLabel(countries: Set<CountryFilter>): String {
   val ordered = CountryFilter.selectable.filter { it in normalized }
   return when (ordered.size) {
     0 -> stringResource(R.string.country_filters_all)
-    1 -> ordered.first().label
-    2 -> "${ordered[0].label}, ${ordered[1].label}"
+    1 -> ordered.first().pickerLabel
+    2 -> "${ordered[0].pickerLabel}, ${ordered[1].pickerLabel}"
     else -> stringResource(R.string.country_filters_count, ordered.size)
   }
 }
@@ -752,7 +754,7 @@ fun CountryFiltersDialog(
       title = stringResource(R.string.country_filter),
       hint = stringResource(R.string.country_filters_picker_hint),
       options = CountryFilter.selectable,
-      labelOf = { it.label },
+      labelOf = { it.pickerLabel },
       selected = selected,
       normalize = CountryFilter::normalizeSelection,
       onDismiss = onDismiss,
@@ -811,23 +813,49 @@ private fun <T> MultiSelectFilterDialog(
 
   PortalFormDialog(
       title = title,
-      subtitle = stringResource(R.string.library_filters),
       onDismiss = onDismiss,
       width = PortalDialogWidths.Picker,
-      maxHeight = null,
+      maxHeight = PortalDialogWidths.FilterPickerDialog,
+      lazyListBody = true,
+      footer = {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+          PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
+          Spacer(Modifier.width(10.dp))
+          PortalPrimaryButton(
+              text = stringResource(R.string.apply),
+              onClick = {
+                if (draft.isNotEmpty()) {
+                  onApply(draft)
+                }
+                onDismiss()
+              },
+          )
+        }
+      },
   ) {
-    Text(
-        hint,
-        color = PortalAniColors.TextMuted,
-        fontSize = 14.sp,
-        lineHeight = 19.sp,
-    )
-    Spacer(Modifier.height(14.dp))
-    Column(
-        modifier = Modifier.fillMaxWidth(),
+    val bodyMax = LocalPortalDialogBodyMax.current
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth().heightIn(max = bodyMax),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      options.forEach { option ->
+      item {
+        Text(
+            hint,
+            color = PortalAniColors.TextMuted,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(10.dp))
+      }
+      items(
+          items = options,
+          key = { option -> labelOf(option) },
+      ) { option ->
         val isSelected = option in draft
         PortalPickerOptionRow(
             label = labelOf(option),
@@ -842,23 +870,6 @@ private fun <T> MultiSelectFilterDialog(
             },
         )
       }
-    }
-    Spacer(Modifier.height(16.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-    ) {
-      PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
-      Spacer(Modifier.width(10.dp))
-      PortalPrimaryButton(
-          text = stringResource(R.string.apply),
-          onClick = {
-            if (draft.isNotEmpty()) {
-              onApply(draft)
-            }
-            onDismiss()
-          },
-      )
     }
   }
 }
@@ -876,20 +887,47 @@ fun PersonalListStatusesDialog(
       subtitle = stringResource(R.string.personal_lists_hint),
       onDismiss = onDismiss,
       width = PortalDialogWidths.Picker,
-      maxHeight = null,
+      maxHeight = PortalDialogWidths.PickerDialog,
+      lazyListBody = true,
+      footer = {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+          PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
+          Spacer(Modifier.width(10.dp))
+          PortalPrimaryButton(
+              text = stringResource(R.string.apply),
+              onClick = {
+                if (draft.isNotEmpty()) {
+                  onApply(draft)
+                }
+                onDismiss()
+              },
+          )
+        }
+      },
   ) {
-    Text(
-        stringResource(R.string.list_statuses_picker_hint),
-        color = PortalAniColors.TextMuted,
-        fontSize = 14.sp,
-        lineHeight = 19.sp,
-    )
-    Spacer(Modifier.height(14.dp))
-    Column(
-        modifier = Modifier.fillMaxWidth(),
+    val bodyMax = LocalPortalDialogBodyMax.current
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth().heightIn(max = bodyMax),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      ListStatus.entries.forEach { status ->
+      item {
+        Text(
+            stringResource(R.string.list_statuses_picker_hint),
+            color = PortalAniColors.TextMuted,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(10.dp))
+      }
+      items(
+          items = ListStatus.entries,
+          key = { it.name },
+      ) { status ->
         val isSelected = status in draft
         PortalPickerOptionRow(
             label = listStatusLabel(status),
@@ -906,23 +944,6 @@ fun PersonalListStatusesDialog(
             iconTint = status.accentColor(),
         )
       }
-    }
-    Spacer(Modifier.height(16.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.End,
-    ) {
-      PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
-      Spacer(Modifier.width(10.dp))
-      PortalPrimaryButton(
-          text = stringResource(R.string.apply),
-          onClick = {
-            if (draft.isNotEmpty()) {
-              onApply(draft)
-            }
-            onDismiss()
-          },
-      )
     }
   }
 }
@@ -961,20 +982,24 @@ fun ListStatusDialog(
       subtitle = animeTitle,
       onDismiss = onDismiss,
       width = PortalDialogWidths.Picker,
-      maxHeight = null,
+      maxHeight = PortalDialogWidths.PickerDialog,
+      lazyListBody = true,
   ) {
-    Text(
-        stringResource(R.string.list_status_dialog_hint),
-        color = PortalAniColors.TextMuted,
-        fontSize = 14.sp,
-        lineHeight = 19.sp,
-    )
-    Spacer(Modifier.height(14.dp))
-    Column(
-        modifier = Modifier.fillMaxWidth(),
+    val bodyMax = LocalPortalDialogBodyMax.current
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth().heightIn(max = bodyMax),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      ListStatus.entries.forEach { status ->
+      item {
+        Text(
+            stringResource(R.string.list_status_dialog_hint),
+            color = PortalAniColors.TextMuted,
+            fontSize = 14.sp,
+            lineHeight = 19.sp,
+        )
+        Spacer(Modifier.height(6.dp))
+      }
+      items(ListStatus.entries, key = { it.name }) { status ->
         val selected = currentStatus == status
         PortalPickerOptionRow(
             label = listStatusLabel(status),
@@ -984,15 +1009,17 @@ fun ListStatusDialog(
             iconTint = status.accentColor(),
         )
       }
-    }
-    if (onRemove != null && currentStatus != null) {
-      Spacer(Modifier.height(12.dp))
-      PortalSettingsDivider()
-      PortalSettingsActionRow(
-          label = stringResource(R.string.remove_from_list),
-          onClick = onRemove,
-          labelColor = PortalAniColors.TextMuted,
-      )
+      if (onRemove != null && currentStatus != null) {
+        item {
+          Spacer(Modifier.height(4.dp))
+          PortalSettingsDivider()
+          PortalSettingsActionRow(
+              label = stringResource(R.string.remove_from_list),
+              onClick = onRemove,
+              labelColor = PortalAniColors.TextMuted,
+          )
+        }
+      }
     }
   }
 }
@@ -1003,10 +1030,11 @@ fun SignInPromptDialog(
     onDismiss: () -> Unit,
     onSignIn: () -> Unit,
 ) {
-  Dialog(onDismissRequest = onDismiss) {
+  PortalCenteredDialog(onDismiss = onDismiss) {
     Column(
         modifier =
-            Modifier.fillMaxWidth()
+            Modifier.width(PortalDialogWidths.Form)
+                .wrapContentHeight()
                 .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
                 .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
                 .padding(24.dp),

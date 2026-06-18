@@ -225,6 +225,8 @@ If it does not:
 3. Pick one or more lists: Currently watching, Planning, Completed, etc.
 4. Optionally narrow with **Format**, **Country**, **Source material**, and **Demographic** under **What to show** (applied on the device after your lists load).
 
+Multi-select filter dialogs (format, country, source, demographic, list statuses) open centered on the Portal screen. Long lists scroll inside the dialog; **Close** and **Apply** stay pinned at the bottom. Country picker rows include flag emojis next to each country name. From anime detail, **Add to list** / **Change list** uses the same scrollable layout.
+
 ### Settings reference
 
 **Slideshow:** frame mode, seconds per slide, shuffle.
@@ -242,7 +244,7 @@ If it does not:
 | Seconds per slide | Auto-advance interval (5–120 s) |
 | Lists | Which AniList lists to show (Personal mode); select multiple |
 | Format | TV, movie, OVA, … — multi-select; both sources |
-| Country | Country of origin (Japan, China, …) — multi-select; both sources |
+| Country | Country of origin (Japan, China, …) — multi-select with flag emojis; both sources |
 | Source material | Manga, light novel, original, … — multi-select; both sources |
 | Demographic | Shounen, seinen, shoujo, … — multi-select; both sources |
 | Sort | Trending, score, popularity, newest — Full library slideshow; Personal calendar |
@@ -341,6 +343,7 @@ When signed in and an anime is on your list, a colored status badge appears abov
 | Calendar empty week | Widen **Format** / change **Sort**, turn off **Hide Hentai**, try another week, or switch **Full library** source |
 | Calendar missing a show | Confirm the episode is on [AniList’s schedule](https://anilist.co) for that week; check **Format** filter and **Hide Hentai**; finished finales still show if scheduled |
 | Calendar settings won’t open | Long-press a poster, day header, or month title (not just the screen edge) |
+| Filter dialog clipped or off-center | Update to **0.9.34+** — dialogs use screen-sized centering and scrollable lists |
 
 ---
 
