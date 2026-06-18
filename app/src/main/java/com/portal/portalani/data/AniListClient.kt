@@ -20,9 +20,9 @@ data class FetchBatchResult(
     val hasMore: Boolean,
 )
 
-class AniListClient(private val http: OkHttpClient) {
+class AniListClient(private val http: OkHttpClient) : AniListClientPort {
   @Throws(IOException::class)
-  fun fetchViewer(accessToken: String): ViewerProfile {
+  override fun fetchViewer(accessToken: String): ViewerProfile {
     val data = postGraphQl(VIEWER_QUERY, null, accessToken)
     val viewer = data.getJSONObject("Viewer")
     return ViewerProfile(
@@ -67,12 +67,12 @@ class AniListClient(private val http: OkHttpClient) {
   }
 
   @Throws(IOException::class)
-  fun fetchLibraryPages(
+  override fun fetchLibraryPages(
       filters: LibraryFilters,
-      startPage: Int = 1,
-      pageCount: Int = DEFAULT_INITIAL_PAGES,
-      perPage: Int = DEFAULT_PER_PAGE,
-      accessToken: String? = null,
+      startPage: Int,
+      pageCount: Int,
+      perPage: Int,
+      accessToken: String?,
   ): FetchBatchResult =
       fetchPages(
           startPage = startPage,
@@ -90,7 +90,7 @@ class AniListClient(private val http: OkHttpClient) {
       )
 
   @Throws(IOException::class)
-  fun fetchMediaById(id: Int, accessToken: String? = null): AnimeSlide? {
+  override fun fetchMediaById(id: Int, accessToken: String?): AnimeSlide? {
     val variables = JSONObject().put("id", id)
     val query = if (accessToken != null) MEDIA_BY_ID_AUTH_QUERY else MEDIA_BY_ID_QUERY
     val data = postGraphQl(query, variables, accessToken)
@@ -99,11 +99,11 @@ class AniListClient(private val http: OkHttpClient) {
   }
 
   @Throws(IOException::class)
-  fun fetchAiringSchedules(
+  override fun fetchAiringSchedules(
       airingAtGreater: Int,
       airingAtLesser: Int,
-      accessToken: String? = null,
-      perPage: Int = DEFAULT_PER_PAGE,
+      accessToken: String?,
+      perPage: Int,
   ): List<CalendarAiringEntry> {
     val all = mutableListOf<CalendarAiringEntry>()
     var page = 1
@@ -139,13 +139,13 @@ class AniListClient(private val http: OkHttpClient) {
           .slides
 
   @Throws(IOException::class)
-  fun fetchViewerListPages(
+  override fun fetchViewerListPages(
       accessToken: String,
       userId: Int,
       status: ListStatus,
-      startPage: Int = 1,
-      pageCount: Int = DEFAULT_INITIAL_PAGES,
-      perPage: Int = DEFAULT_PER_PAGE,
+      startPage: Int,
+      pageCount: Int,
+      perPage: Int,
   ): FetchBatchResult =
       fetchPages(startPage = startPage, pageCount = pageCount, perPage = perPage) { page ->
         val variables =
@@ -190,12 +190,12 @@ class AniListClient(private val http: OkHttpClient) {
   }
 
   @Throws(IOException::class)
-  fun saveMediaListEntry(
+  override fun saveMediaListEntry(
       accessToken: String,
       mediaId: Int,
-      listEntryId: Int? = null,
-      status: ListStatus? = null,
-      score: Float? = null,
+      listEntryId: Int?,
+      status: ListStatus?,
+      score: Float?,
   ): MediaListUpdate {
     val variables = JSONObject().put("mediaId", mediaId)
     listEntryId?.let { variables.put("id", it) }
@@ -216,13 +216,13 @@ class AniListClient(private val http: OkHttpClient) {
   }
 
   @Throws(IOException::class)
-  fun deleteMediaListEntry(accessToken: String, listEntryId: Int) {
+  override fun deleteMediaListEntry(accessToken: String, listEntryId: Int) {
     val variables = JSONObject().put("id", listEntryId)
     postGraphQl(DELETE_MEDIA_LIST_ENTRY_MUTATION, variables, accessToken)
   }
 
   @Throws(IOException::class)
-  fun toggleFavourite(accessToken: String, animeId: Int): Boolean {
+  override fun toggleFavourite(accessToken: String, animeId: Int): Boolean {
     val variables = JSONObject().put("animeId", animeId)
     val data = postGraphQl(TOGGLE_FAVOURITE_MUTATION, variables, accessToken)
     val favourites = data.getJSONObject("ToggleFavourite")
