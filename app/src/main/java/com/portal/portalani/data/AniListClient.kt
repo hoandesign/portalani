@@ -206,7 +206,7 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
       else -> variables.put("score", score.toDouble())
     }
 
-    val data = postGraphQl(SAVE_MEDIA_LIST_ENTRY_MUTATION, variables, accessToken)
+    val data = postGraphQl(SAVE_MEDIA_LIST_ENTRY_MUTATION, variables, accessToken, retryOnIo = false)
     val entry = data.getJSONObject("SaveMediaListEntry")
     return MediaListUpdate(
         listEntryId = entry.getInt("id"),
@@ -218,13 +218,13 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
   @Throws(IOException::class)
   override fun deleteMediaListEntry(accessToken: String, listEntryId: Int) {
     val variables = JSONObject().put("id", listEntryId)
-    postGraphQl(DELETE_MEDIA_LIST_ENTRY_MUTATION, variables, accessToken)
+    postGraphQl(DELETE_MEDIA_LIST_ENTRY_MUTATION, variables, accessToken, retryOnIo = false)
   }
 
   @Throws(IOException::class)
   override fun toggleFavourite(accessToken: String, animeId: Int): Boolean {
     val variables = JSONObject().put("animeId", animeId)
-    val data = postGraphQl(TOGGLE_FAVOURITE_MUTATION, variables, accessToken)
+    val data = postGraphQl(TOGGLE_FAVOURITE_MUTATION, variables, accessToken, retryOnIo = false)
     val favourites = data.getJSONObject("ToggleFavourite")
     val anime = favourites.optJSONObject("anime")?.optJSONArray("nodes") ?: JSONArray()
     for (i in 0 until anime.length()) {
@@ -235,6 +235,17 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
 
   @Throws(IOException::class)
   private fun postGraphQl(
+      query: String,
+      variables: JSONObject?,
+      accessToken: String?,
+      retryOnIo: Boolean = true,
+  ): JSONObject {
+    val execute = { executeGraphQl(query, variables, accessToken) }
+    return if (retryOnIo) NetworkRetry.withRetry(execute) else execute()
+  }
+
+  @Throws(IOException::class)
+  private fun executeGraphQl(
       query: String,
       variables: JSONObject?,
       accessToken: String?,
