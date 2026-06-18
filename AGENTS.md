@@ -20,7 +20,7 @@ Kotlin + Jetpack Compose Android app for **Meta Portal** (screensaver / DreamSer
 
 - Compose UI smoke tests exist but are not run in CI (need emulator)
 - Heavy `org.json` parsing in `AniListClient.kt`
-- God files still large at UI layer (`PortalAniApp.kt`, `AnimeInteractionDialogs.kt`)
+- God files still large at UI layer (`AnimeInteractionDialogs.kt`; settings moved to `SettingsPanel.kt`)
 
 ## Do not
 
