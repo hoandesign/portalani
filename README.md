@@ -39,7 +39,13 @@ GRADLE_OPTS="-Xmx4g" ./gradlew test
 
 **79 JVM unit tests** — 71 data-layer tests plus 8 `MainViewModel` behavioral tests (Robolectric + fake AniList client).
 
-GitHub Actions runs `./gradlew test assembleDebug` on every push to `main` and on pull requests (no AniList secrets required for compile/test).
+**3 Compose UI smoke tests** (`androidTest`) — settings sheet, format filter dialog, list status scroll.
+
+```bash
+GRADLE_OPTS="-Xmx4g" ./gradlew connectedDebugAndroidTest
+```
+
+GitHub Actions runs `./gradlew test assembleDebug assembleRelease` on push/PR. UI tests are local/device only for now (no emulator in CI).
 
 **Production hardening (tests, CI, code quality):** see [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md) and [AGENTS.md](AGENTS.md).
 

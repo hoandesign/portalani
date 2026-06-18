@@ -18,9 +18,9 @@ Kotlin + Jetpack Compose Android app for **Meta Portal** (screensaver / DreamSer
 
 ## Current engineering gaps (as of v0.10.0)
 
-- No Compose UI / instrumentation tests yet
+- Compose UI smoke tests exist but are not run in CI (need emulator)
 - Heavy `org.json` parsing in `AniListClient.kt`
-- God files still untested at UI layer (`PortalAniApp.kt`, `AnimeInteractionDialogs.kt`)
+- God files still large at UI layer (`PortalAniApp.kt`, `AnimeInteractionDialogs.kt`)
 
 ## Do not
 

@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -814,6 +815,7 @@ private fun <T> MultiSelectFilterDialog(
   PortalFormDialog(
       title = title,
       onDismiss = onDismiss,
+      modifier = Modifier.testTag(PortalTestTags.FILTER_DIALOG),
       width = PortalDialogWidths.Picker,
       maxHeight = PortalDialogWidths.FilterPickerDialog,
       lazyListBody = true,
@@ -822,7 +824,11 @@ private fun <T> MultiSelectFilterDialog(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
         ) {
-          PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
+          PortalSecondaryButton(
+              text = stringResource(R.string.close),
+              onClick = onDismiss,
+              modifier = Modifier.testTag(PortalTestTags.FILTER_DIALOG_CLOSE),
+          )
           Spacer(Modifier.width(10.dp))
           PortalPrimaryButton(
               text = stringResource(R.string.apply),
@@ -832,6 +838,7 @@ private fun <T> MultiSelectFilterDialog(
                 }
                 onDismiss()
               },
+              modifier = Modifier.testTag(PortalTestTags.FILTER_DIALOG_APPLY),
           )
         }
       },
@@ -894,7 +901,11 @@ fun PersonalListStatusesDialog(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
         ) {
-          PortalSecondaryButton(text = stringResource(R.string.close), onClick = onDismiss)
+          PortalSecondaryButton(
+              text = stringResource(R.string.close),
+              onClick = onDismiss,
+              modifier = Modifier.testTag(PortalTestTags.FILTER_DIALOG_CLOSE),
+          )
           Spacer(Modifier.width(10.dp))
           PortalPrimaryButton(
               text = stringResource(R.string.apply),
@@ -904,6 +915,7 @@ fun PersonalListStatusesDialog(
                 }
                 onDismiss()
               },
+              modifier = Modifier.testTag(PortalTestTags.FILTER_DIALOG_APPLY),
           )
         }
       },
@@ -981,13 +993,14 @@ fun ListStatusDialog(
       title = title,
       subtitle = animeTitle,
       onDismiss = onDismiss,
+      modifier = Modifier.testTag(PortalTestTags.LIST_STATUS_DIALOG),
       width = PortalDialogWidths.Picker,
       maxHeight = PortalDialogWidths.PickerDialog,
       lazyListBody = true,
   ) {
     val bodyMax = LocalPortalDialogBodyMax.current
     LazyColumn(
-        modifier = Modifier.fillMaxWidth().heightIn(max = bodyMax),
+        modifier = Modifier.fillMaxWidth().heightIn(max = bodyMax).testTag(PortalTestTags.LIST_STATUS_DIALOG_LIST),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       item {
