@@ -17,6 +17,7 @@ import com.portal.portalani.data.TokenStore
 import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.sampleCalendarEntry
 import com.portal.portalani.data.sampleSlide
+import java.io.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
@@ -219,6 +220,18 @@ class MainViewModelTest {
     assertNotNull(vm.calendarState.value)
     assertTrue(vm.calendarState.value!!.entries.isNotEmpty())
     assertTrue(fakeClient.fetchAiringSchedulesCalls <= callsAfterInitialLoad + 4)
+  }
+
+  @Test
+  fun libraryRefresh_ioFailure_setsErrorState() {
+    val fakeClient = FakeAniListClient()
+    fakeClient.libraryPagesError = IOException("network down")
+    val vm = createViewModel(fakeClient = fakeClient)
+
+    vm.refresh()
+
+    val state = awaitState(vm, UiState.Error::class.java)
+    assertTrue(state.message!!.contains("network down"))
   }
 
   @Test

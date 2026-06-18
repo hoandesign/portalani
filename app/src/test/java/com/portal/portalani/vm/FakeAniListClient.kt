@@ -8,6 +8,7 @@ import com.portal.portalani.data.LibraryFilters
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.MediaListUpdate
 import com.portal.portalani.data.ViewerProfile
+import java.io.IOException
 
 class FakeAniListClient(
     var libraryPagesResult: FetchBatchResult = FetchBatchResult(emptyList(), 1, false),
@@ -20,6 +21,7 @@ class FakeAniListClient(
   var fetchViewerListPagesCalls = 0
   var fetchAiringSchedulesCalls = 0
   var fetchViewerCalls = 0
+  var libraryPagesError: IOException? = null
 
   override fun fetchViewer(accessToken: String): ViewerProfile {
     fetchViewerCalls++
@@ -34,6 +36,7 @@ class FakeAniListClient(
       accessToken: String?,
   ): FetchBatchResult {
     fetchLibraryPagesCalls++
+    libraryPagesError?.let { throw it }
     return libraryPagesResult
   }
 

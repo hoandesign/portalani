@@ -38,6 +38,7 @@ import com.portal.portalani.data.WeatherClient
 import com.portal.portalani.data.WeatherNow
 import com.portal.portalani.data.WeekStart
 import com.portal.portalani.data.toPlaceholderSlide
+import java.io.IOException
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -48,6 +49,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONException
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 
@@ -204,8 +206,10 @@ class MainViewModel internal constructor(
         } else if (slide == null) {
           _userMessage.value = "Could not load anime details."
         }
-      } catch (e: Exception) {
-        _userMessage.value = e.message ?: "Could not load anime details."
+      } catch (e: IOException) {
+        _userMessage.value = userVisibleError(e, "Could not load anime details.")
+      } catch (e: JSONException) {
+        _userMessage.value = userVisibleError(e, "Could not load anime details.")
       } finally {
         _calendarDetailLoading.value = false
       }
@@ -331,8 +335,10 @@ class MainViewModel internal constructor(
         updateSettings(_settings.value.copy(sourceMode = SourceMode.PERSONAL))
         bringAppToFront()
         loadSlides(showLoading = true)
-      } catch (e: Exception) {
-        _state.value = UiState.Error(e.message ?: "Sign-in failed")
+      } catch (e: IOException) {
+        _state.value = UiState.Error(userVisibleError(e, "Sign-in failed"))
+      } catch (e: JSONException) {
+        _state.value = UiState.Error(userVisibleError(e, "Sign-in failed"))
       }
     }
   }
@@ -761,8 +767,10 @@ class MainViewModel internal constructor(
         val updated = withContext(Dispatchers.IO) { transform(token, slide) }
         updateSlideInState(mediaId, updated)
         persistCurrentSlides()
-      } catch (e: Exception) {
-        _userMessage.value = e.message ?: failureMessage
+      } catch (e: IOException) {
+        _userMessage.value = userVisibleError(e, failureMessage)
+      } catch (e: JSONException) {
+        _userMessage.value = userVisibleError(e, failureMessage)
       }
     }
   }
@@ -856,24 +864,30 @@ class MainViewModel internal constructor(
       }
       _state.value = UiState.Showing(slides = emptyList(), fromCache = false)
       prefetchAdjacentCalendarWeeks(settings, weekStart)
-    } catch (e: Exception) {
-      if (_calendarState.value == null) {
-        _state.value = UiState.Error(e.message ?: "Could not load airing schedule", canOpenSettings = true)
-      } else if (!hasVisibleData) {
-        val stale = calendarWeekCache.loadStale(cacheKey)
-        if (stale != null && stale.weekStart == weekStart) {
-          val fallback =
-              CalendarWeekState(
-                  weekStart = weekStart,
-                  entries = stale.entries,
-                  isCurrentWeek = calendarWeekOffset == 0,
-                  fromCache = true,
-              )
-          calendarMemoryCache[cacheKey] = fallback
-          if (calendarWeekStart(settings) == weekStart) {
-            _calendarState.value = fallback
+    } catch (e: Throwable) {
+      when (e) {
+        is IOException, is JSONException -> {
+          if (_calendarState.value == null) {
+            _state.value =
+                UiState.Error(userVisibleError(e, "Could not load airing schedule"), canOpenSettings = true)
+          } else if (!hasVisibleData) {
+            val stale = calendarWeekCache.loadStale(cacheKey)
+            if (stale != null && stale.weekStart == weekStart) {
+              val fallback =
+                  CalendarWeekState(
+                      weekStart = weekStart,
+                      entries = stale.entries,
+                      isCurrentWeek = calendarWeekOffset == 0,
+                      fromCache = true,
+                  )
+              calendarMemoryCache[cacheKey] = fallback
+              if (calendarWeekStart(settings) == weekStart) {
+                _calendarState.value = fallback
+              }
+            }
           }
         }
+        else -> throw e
       }
     } finally {
       if (calendarWeekStart(settings) == weekStart) {
@@ -1027,20 +1041,29 @@ class MainViewModel internal constructor(
       }
       withContext(Dispatchers.IO) { slideCache.save(cacheKey, slides) }
       _state.value = showingState(slides, fromCache = false)
-    } catch (e: Exception) {
-      if (cachedStale != null) {
-        _state.value = showingState(cachedStale, fromCache = true)
-        return
-      }
-      if (settings.sourceMode == SourceMode.PERSONAL && token != null) {
-        _state.value =
-            UiState.NeedsSetup(
-                message = e.message ?: "Could not load your list. Sign in again or switch to Full library.",
-                canSignIn = auth.isConfigured(),
-                canUseLibrary = true,
-            )
-      } else {
-        _state.value = UiState.Error(e.message ?: "Could not load anime")
+    } catch (e: Throwable) {
+      when (e) {
+        is IOException, is JSONException -> {
+          if (cachedStale != null) {
+            _state.value = showingState(cachedStale, fromCache = true)
+            return
+          }
+          if (settings.sourceMode == SourceMode.PERSONAL && token != null) {
+            _state.value =
+                UiState.NeedsSetup(
+                    message =
+                        userVisibleError(
+                            e,
+                            "Could not load your list. Sign in again or switch to Full library.",
+                        ),
+                    canSignIn = auth.isConfigured(),
+                    canUseLibrary = true,
+                )
+          } else {
+            _state.value = UiState.Error(userVisibleError(e, "Could not load anime"))
+          }
+        }
+        else -> throw e
       }
     }
   }
@@ -1085,8 +1108,11 @@ class MainViewModel internal constructor(
           appendSlides(filtered)
           persistCurrentSlides()
         }
-      } catch (_: Exception) {
-        // Keep current feed; try again on a later slide.
+      } catch (e: Throwable) {
+        when (e) {
+          is IOException, is JSONException -> Unit // Keep current feed; try again on a later slide.
+          else -> throw e
+        }
       } finally {
         feedLoadingMore = false
       }
