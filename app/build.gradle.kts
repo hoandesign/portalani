@@ -22,8 +22,8 @@ android {
     applicationId = "com.portal.portalani"
     minSdk = 28
     targetSdk = 29
-    versionCode = 87
-    versionName = "0.10.4"
+    versionCode = 88
+    versionName = "0.10.5"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

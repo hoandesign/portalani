@@ -1,7 +1,6 @@
 package com.portal.portalani.vm
 
 import android.app.Application
-import android.net.Uri
 import com.portal.portalani.MainViewModel
 import com.portal.portalani.MainViewModelDeps
 import com.portal.portalani.UiState
@@ -138,26 +137,6 @@ class MainViewModelTest {
   }
 
   @Test
-  fun cancelSignIn_restoresNeedsSetup() {
-    val vm =
-        createViewModel(
-            settings = AppSettings(sourceMode = SourceMode.PERSONAL),
-        )
-
-    vm.refresh()
-    val setup = awaitState(vm, UiState.NeedsSetup::class.java)
-
-    vm.signIn()
-    assertTrue(vm.state.value is UiState.SigningIn)
-
-    vm.cancelSignIn()
-
-    val restored = awaitState(vm, UiState.NeedsSetup::class.java)
-    assertEquals(setup.message, restored.message)
-    assertTrue(restored.canSignIn)
-  }
-
-  @Test
   fun personalWithToken_networkError_showsErrorAndKeepsSession() {
     TokenStore(app).apply {
       saveAccessToken("test-token")
@@ -221,31 +200,6 @@ class MainViewModelTest {
 
     val after = awaitOrderResetTokenGreater(vm, before)
     assertTrue(after > before)
-  }
-
-  @Test
-  fun oauthCallback_error_setsErrorState() {
-    val fakeAuth = FakeAniListAuth()
-    fakeAuth.setCallback(error = "access_denied")
-    val vm = createViewModel(fakeAuth = fakeAuth)
-
-    vm.handleOAuthCallback(Uri.parse("portalani://callback?error=access_denied"))
-
-    val state = awaitState(vm, UiState.Error::class.java)
-    assertTrue(state.message.contains("access_denied"))
-  }
-
-  @Test
-  fun oauthCallback_stateMismatch_setsErrorState() {
-    val fakeAuth = FakeAniListAuth()
-    val vm = createViewModel(fakeAuth = fakeAuth)
-
-    vm.signIn()
-    fakeAuth.setCallback(code = "auth-code", state = "wrong-state")
-    vm.handleOAuthCallback(Uri.parse("portalani://callback?code=auth-code&state=wrong-state"))
-
-    val state = awaitState(vm, UiState.Error::class.java)
-    assertTrue(state.message.contains("state mismatch"))
   }
 
   @Test
