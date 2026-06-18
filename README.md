@@ -1,3 +1,5 @@
+[![aislop](https://badges.scanaislop.com/score/hoandesign/portalani.svg)](https://scanaislop.com/hoandesign/portalani)
+
 # Portal Ani
 
 AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slideshow with cover art, rankings, trailers, optional clock and weather, weekly airing calendar, and optional AniList sign-in.
