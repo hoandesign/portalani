@@ -55,7 +55,7 @@ If sign-in fails, check that the redirect URI in AniList matches exactly and tha
 
 | Tool | Notes |
 |------|--------|
-| JDK 11+ | Android Gradle Plugin requirement |
+| JDK 17+ | Matches CI and Android Gradle Plugin 9.x |
 | Android SDK | API 28+ (Portal), compile SDK 36 |
 | `adb` | Android platform-tools, or Meta **hzdb** CLI |
 
@@ -74,17 +74,48 @@ GRADLE_OPTS="-Xmx2g" ./gradlew assembleDebug
 
 Output APK: `app/build/outputs/apk/debug/app-debug.apk`
 
-> **Tip:** If Gradle runs out of memory, always set `GRADLE_OPTS="-Xmx2g"`.
+> **Tip:** If Gradle runs out of memory, always set `GRADLE_OPTS="-Xmx2g"` (CI uses `-Xmx4g`).
+
+### Project layout (for contributors)
+
+```
+app/src/main/java/com/portal/portalani/
+├── MainActivity.kt, MainViewModel.kt
+├── vm/                    # Extracted coordinators (feed, calendar, OAuth)
+├── data/                  # AniList client, filters, caches, models
+├── ui/                    # Compose screens, dialogs, theme
+└── AnimeDreamService.kt   # Portal screensaver
+
+scripts/deploy.sh          # USB install + screensaver registration (project root)
+```
+
+`MainViewModel` delegates slideshow loading to `SlideshowFeedLoader`, calendar to `CalendarCoordinator`, and OAuth to `AniListSessionHandler`. Prefer adding tests in `app/src/test/` before moving more logic out of the ViewModel.
+
+### Unit tests
+
+```bash
+GRADLE_OPTS="-Xmx2g" ./gradlew test
+```
+
+107 JVM tests cover filters, caches, calendar math, AniList JSON parsing, coordinators, and ViewModel behavior. CI runs this on every push/PR.
 
 ### Compose UI smoke tests (optional)
 
-Three instrumentation tests in `app/src/androidTest/` exercise settings and dialog UI. Start an Android emulator (API 29+ recommended; landscape matches Portal), then run:
+Three instrumentation tests in `app/src/androidTest/` exercise settings and dialog UI:
+
+| Test | What it checks |
+|------|----------------|
+| `SettingsSheetSmokeTest` | Error screen → Open settings → sheet visible |
+| `FilterDialogSmokeTest` | Format filter dialog; **Apply** and **Close** visible |
+| `ListStatusDialogSmokeTest` | List status picker scrolls through all statuses |
+
+Start an Android emulator (API 29+ recommended; landscape matches Portal), then run:
 
 ```bash
 GRADLE_OPTS="-Xmx2g" ./gradlew connectedDebugAndroidTest
 ```
 
-CI runs the same task on an API 29 emulator (landscape) via GitHub Actions; see `.github/workflows/ci.yml`.
+**CI:** GitHub Actions runs the same task on an API 29 x86_64 emulator in landscape (see `.github/workflows/ci.yml`, job `emulator-ui-tests`). The build job installs `platforms;android-29` for the emulator; the main job only needs API 36 for compile.
 
 ### Optional: launcher icon
 
@@ -353,7 +384,8 @@ When signed in and an anime is on your list, a colored status badge appears abov
 | Calendar empty week | Widen **Format** / change **Sort**, turn off **Hide Hentai**, try another week, or switch **Full library** source |
 | Calendar missing a show | Confirm the episode is on [AniList’s schedule](https://anilist.co) for that week; check **Format** filter and **Hide Hentai**; finished finales still show if scheduled |
 | Calendar settings won’t open | Long-press a poster, day header, or month title (not just the screen edge) |
-| Filter dialog clipped or off-center | Update to **0.9.34+** — dialogs use screen-sized centering and scrollable lists |
+| Filter dialog clipped or off-center | Update to **0.11.1+** — filter pickers use fixed height with pinned **Close** / **Apply** footer |
+| CI emulator tests fail locally | Install API 29 platform: `sdkmanager "platforms;android-29"`; use landscape emulator |
 
 ---
 

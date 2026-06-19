@@ -11,8 +11,8 @@ Single source of truth: [`app/build.gradle.kts`](../app/build.gradle.kts) (`vers
 After bumping the version, tag the repo:
 
 ```bash
-git tag -a v0.10.0 -m "v0.10.0 — tests, CI, MainViewModel tests, release minify"
-git push origin v0.10.0
+git tag -a v0.11.1 -m "v0.11.1 — coordinators, network retry, CI emulator tests"
+git push origin v0.11.1
 ```
 
 Use the same tag name as `versionName` (with a `v` prefix).
@@ -95,7 +95,14 @@ After switching between debug and release signatures, `deploy.sh` may uninstall 
 
 ## CI
 
-GitHub Actions runs `test`, `assembleDebug`, and `assembleRelease` on every push/PR. Release builds use the debug signing key when no `RELEASE_STORE_FILE` is set, so R8 minify is validated on a signed artifact.
+GitHub Actions on every push/PR:
+
+| Job | Command | Purpose |
+|-----|---------|---------|
+| `build` | `./gradlew test assembleDebug assembleRelease` | Unit tests + debug/release APKs (blocks merge) |
+| `emulator-ui-tests` | `connectedDebugAndroidTest` on API 29 landscape | Compose smoke tests (informational; `continue-on-error: true`) |
+
+Release builds use the debug signing key when no `RELEASE_STORE_FILE` is set, so R8 minify is validated on a signed artifact.
 
 ---
 

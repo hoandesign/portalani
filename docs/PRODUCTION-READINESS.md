@@ -2,7 +2,9 @@
 
 **Purpose:** Onboard a fresh AI agent session with zero prior context. Turn this repo from fast “vibecode” iteration into a maintainable, tested, shippable Android app for Meta Portal.
 
-**Repo:** `portalani` · Package `com.portal.portalani` · Kotlin + Jetpack Compose · ~11k LOC across 40 Kotlin files · **v0.9.34** at time of writing.
+**Repo:** `portalani` · Package `com.portal.portalani` · Kotlin + Jetpack Compose · **v0.11.1** at time of writing.
+
+**Status (2026-06-19):** Phases 0–3 largely complete — audit doc, 107 JVM tests, CI on push/PR, R8 release builds, coordinators extracted (`SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`), network retry on read-only API calls, emulator UI smoke tests in CI. Remaining work: further VM slimming, optional Detekt, tighten emulator job to block merges when stable.
 
 **Owner:** Hoan Do (non-technical). Explain trade-offs in plain language. Get approval before large refactors or dependency additions.
 
@@ -269,7 +271,8 @@ From `gradle/libs.versions.toml`: AGP 9.2.1, Kotlin 2.2.10, Compose BOM 2026.02.
 
 | Date | Version | Notes |
 |------|---------|-------|
-| 2026-06-16 | — | Initial production-readiness guide after v0.9.34 (filters, scrollable modals, country flags) |
+| 2026-06-19 | 0.11.1 | Coordinators extracted; network retry; CI emulator UI tests; pinned filter dialog footers |
+| 2026-06-16 | — | Initial production-readiness guide after v0.9.34 |
 
 ---
 

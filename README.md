@@ -8,7 +8,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.10.1
+**Version:** 0.11.1
 
 ## Features
 
@@ -31,23 +31,23 @@ Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 ## Testing
 
-Run unit tests (filters, season encoding, calendar math, cache JSON, AniList parsing, MainViewModel reload/OAuth/calendar paths):
+Run unit tests (filters, season encoding, calendar math, cache JSON, AniList parsing, coordinators, OAuth, network retry):
 
 ```bash
 GRADLE_OPTS="-Xmx4g" ./gradlew test
 ```
 
-**79 JVM unit tests** — 71 data-layer tests plus 8 `MainViewModel` behavioral tests (Robolectric + fake AniList client).
+**107 JVM unit tests** across the data layer, `SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`, and `MainViewModel` behavioral paths.
 
-**3 Compose UI smoke tests** (`androidTest`) — settings sheet, format filter dialog, list status scroll.
+**3 Compose UI smoke tests** (`androidTest`) — settings sheet, format filter dialog (Apply/Close visible), list status scroll.
 
 ```bash
 GRADLE_OPTS="-Xmx4g" ./gradlew connectedDebugAndroidTest
 ```
 
-GitHub Actions runs `./gradlew test assembleDebug assembleRelease` on push/PR. UI tests are local/device only for now (no emulator in CI).
+**CI** (badge above): every push/PR runs `./gradlew test assembleDebug assembleRelease`. A second job runs the Compose smoke tests on an API 29 landscape emulator (informational; does not block merge if flaky).
 
-**Production hardening (tests, CI, code quality):** see [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md) and [AGENTS.md](AGENTS.md).
+**Production hardening:** see [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md), [docs/AUDIT-2026-06-16.md](docs/AUDIT-2026-06-16.md), and [AGENTS.md](AGENTS.md).
 
 **Release APK (R8 minify):** see [docs/RELEASE.md](docs/RELEASE.md).
 
