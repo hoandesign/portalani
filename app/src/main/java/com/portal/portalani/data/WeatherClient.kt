@@ -19,7 +19,11 @@ data class GeoPlace(val lat: Double, val lon: Double, val label: String)
 class WeatherClient(private val http: OkHttpClient) {
 
   @Throws(IOException::class)
-  fun current(lat: Double, lon: Double, fahrenheit: Boolean): WeatherNow {
+  fun current(lat: Double, lon: Double, fahrenheit: Boolean): WeatherNow =
+      NetworkRetry.withRetry { fetchCurrent(lat, lon, fahrenheit) }
+
+  @Throws(IOException::class)
+  private fun fetchCurrent(lat: Double, lon: Double, fahrenheit: Boolean): WeatherNow {
     val unit = if (fahrenheit) "fahrenheit" else "celsius"
     val url =
         "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
@@ -41,6 +45,15 @@ class WeatherClient(private val http: OkHttpClient) {
   fun geocode(query: String): List<GeoPlace> {
     val name = query.substringBefore(',').trim()
     if (name.isEmpty()) return emptyList()
+    return try {
+      NetworkRetry.withRetry { fetchGeocode(name) }
+    } catch (_: IOException) {
+      emptyList()
+    }
+  }
+
+  @Throws(IOException::class)
+  private fun fetchGeocode(name: String): List<GeoPlace> {
     val q = URLEncoder.encode(name, "UTF-8")
     val url = "https://geocoding-api.open-meteo.com/v1/search?name=$q&count=5&language=en&format=json"
     http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
