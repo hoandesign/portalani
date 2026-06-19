@@ -82,11 +82,21 @@ internal fun PortalCenteredDialog(
   }
 }
 
-internal fun Modifier.portalDialogSurface(width: Dp, maxHeight: Dp? = null): Modifier =
+internal fun Modifier.portalDialogSurface(
+    width: Dp,
+    maxHeight: Dp? = null,
+    fixedHeight: Dp? = null,
+): Modifier =
     this
         .width(width)
-        .wrapContentHeight()
-        .then(if (maxHeight != null) Modifier.heightIn(max = maxHeight) else Modifier)
+        .then(
+            if (fixedHeight != null) {
+              Modifier.height(fixedHeight)
+            } else {
+              Modifier.wrapContentHeight()
+                  .then(if (maxHeight != null) Modifier.heightIn(max = maxHeight) else Modifier)
+            },
+        )
         .border(1.dp, PortalAniColors.Border, PortalAniShapes.Card)
         .background(PortalAniColors.SurfaceGlass, PortalAniShapes.Card)
         .padding(horizontal = 22.dp, vertical = 18.dp)
@@ -216,9 +226,17 @@ fun PortalFormDialog(
   PortalCenteredDialog(onDismiss = onDismiss) {
     val dialogMax = portalScreenDialogMaxHeight(maxHeight)
     val bodyMax = portalDialogBodyMaxHeight(dialogMax, !subtitle.isNullOrBlank(), footer != null)
+    val pinFooter = lazyListBody && footer != null
 
     CompositionLocalProvider(LocalPortalDialogBodyMax provides bodyMax) {
-      Column(modifier = modifier.portalDialogSurface(width, dialogMax)) {
+      Column(
+          modifier =
+              modifier.portalDialogSurface(
+                  width = width,
+                  maxHeight = dialogMax,
+                  fixedHeight = if (pinFooter) dialogMax else null,
+              ),
+      ) {
         PortalPickerDialogHeader(title = title, onDismiss = onDismiss)
         if (!subtitle.isNullOrBlank()) {
           Spacer(Modifier.height(6.dp))
@@ -233,7 +251,13 @@ fun PortalFormDialog(
         }
         Spacer(Modifier.height(10.dp))
         if (lazyListBody) {
-          content()
+          if (pinFooter) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+              content()
+            }
+          } else {
+            content()
+          }
         } else {
           Column(
               modifier =

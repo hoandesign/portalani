@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -70,9 +71,8 @@ fun PersonalListStatusesDialog(
         }
       },
   ) {
-    val bodyMax = LocalPortalDialogBodyMax.current
     LazyColumn(
-        modifier = Modifier.fillMaxWidth().heightIn(max = bodyMax),
+        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       item {
