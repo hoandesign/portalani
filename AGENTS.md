@@ -36,4 +36,4 @@ Kotlin + Jetpack Compose Android app for **Meta Portal** (screensaver / DreamSer
 
 - Regress screensaver registration, OAuth redirect, landscape layout, offline cache, or pinned filter-dialog footers
 - Add multi-module / Hilt / Room in one shot without a migration plan
-- Create markdown files Hoan did not ask for (except audit output from the production-readiness workflow)
+- Create markdown files the user did not ask for (except audit output from the production-readiness workflow)

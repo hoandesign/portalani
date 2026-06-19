@@ -6,7 +6,7 @@
 
 **Status (2026-06-19):** Phases 0–3 largely complete — audit doc, 107 JVM tests, CI on push/PR, R8 release builds, coordinators extracted (`SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`), network retry on read-only API calls, emulator UI smoke tests in CI. Remaining work: further VM slimming, optional Detekt, tighten emulator job to block merges when stable.
 
-**Owner:** Hoan Do (non-technical). Explain trade-offs in plain language. Get approval before large refactors or dependency additions.
+**Owner:** The project owner (non-technical). Explain trade-offs in plain language. Get approval before large refactors or dependency additions.
 
 ---
 
@@ -27,7 +27,7 @@ You are the lead engineer for **portalani** — an AniList-powered anime screens
 4. **No slop PRs.** Do not add generic `utils/`, `helpers/`, `Manager` classes, duplicate abstractions, or 200-line “cleanup” commits that change behavior without tests.
 5. **Portal constraints stay sacred.** Landscape-only, DreamService screensaver registration, `WRITE_SECURE_SETTINGS` deploy flow, OAuth redirect `portalani://callback`, offline cache — do not regress these. Verify against `docs/SETUP.md`.
 6. **Small, reviewable PRs.** Prefer a sequence: audit doc → unit tests → targeted refactors → CI → release hardening. One concern per PR where possible.
-7. **Ask Hoan** before: new major dependencies, splitting into multi-module, changing OAuth/storage, or deleting features.
+7. **Ask the user** before: new major dependencies, splitting into multi-module, changing OAuth/storage, or deleting features.
 
 ## Phase 0 — Inventory (do not skip)
 
@@ -138,7 +138,7 @@ Run on emulator API 29 landscape or skip in CI if no emulator (document).
 - [ ] Confirm `local.properties` and tokens never logged
 - [ ] WebView OAuth (`AniListOAuthActivity`) — JS enabled; document threat model (AniList only)
 - [ ] `allowBackup="true"` — assess if tokens should be excluded via backup rules
-- [ ] Network: HTTPS only; certificate pinning only if Hoan requests (usually overkill here)
+- [ ] Network: HTTPS only; certificate pinning only if the user requests (usually overkill here)
 
 ## Definition of done (production-ready v1)
 
@@ -151,7 +151,7 @@ You are **not done** until all are true:
 - [ ] No new god-file growth (if you split a file, net LOC in largest file should shrink)
 - [ ] `README.md` updated: version, testing section, CI badge
 - [ ] `docs/SETUP.md` still accurate for Portal deploy
-- [ ] Hoan can run one command to verify: `GRADLE_OPTS="-Xmx2g" ./gradlew test assembleDebug`
+- [ ] The user can run one command to verify: `GRADLE_OPTS="-Xmx2g" ./gradlew test assembleDebug`
 
 ## Suggested PR sequence
 
@@ -187,15 +187,15 @@ metavr device list   # or hzdb device list
 - Commit `local.properties`, keystores, or AniList secrets
 - “Fix” Portal centering/dialogs without Compose UI test or device screenshot evidence
 
-## Success criteria for Hoan
+## Success criteria for the user
 
-When finished, Hoan should be able to:
+When finished, the user should be able to:
 1. Merge PRs that show green CI
 2. Trust that filter/calendar bugs get caught by unit tests before deploy
 3. Ship `app-release.apk` with minify enabled
 4. Onboard a human dev using audit doc + SETUP without reading chat history
 
-Start with **Phase 0 Inventory** — post the audit report and wait for Hoan’s priority pick (tests-first vs CI-first vs refactor-first) before large edits.
+Start with **Phase 0 Inventory** — post the audit report and wait for the user's priority pick (tests-first vs CI-first vs refactor-first) before large edits.
 ```
 
 ---
