@@ -37,7 +37,7 @@ Run unit tests (filters, season encoding, calendar math, cache JSON, AniList par
 GRADLE_OPTS="-Xmx4g" ./gradlew test
 ```
 
-**107 JVM unit tests** across the data layer, `SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`, and `MainViewModel` behavioral paths.
+**116 JVM unit tests** across the data layer, `SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`, and `MainViewModel` behavioral paths.
 
 **3 Compose UI smoke tests** (`androidTest`) — settings sheet, format filter dialog (Apply/Close visible), list status scroll.
 
@@ -73,9 +73,10 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - **Personal** source: only anime on your selected lists. **Full library**: all airing anime matching filters.
 - **What’s on the grid:** every episode AniList schedules for that week. There is **no season picker** and **no status filter** (finished shows with a final episode still appear if AniList lists them for that week).
 - **Filters that still apply:** format (TV, movie, OVA, …), country of origin, source material (manga, light novel, …), demographic (shounen, seinen, …), sort order, **Hide Hentai**, and (in Personal mode) your selected lists.
-- **Detail view:** poster animates from the grid card into the left slot; info panel fades in with stable layout (no jump when full AniList data loads). Same 32dp padding as poster/informative modes.
+- **Detail view:** poster animates from the grid card into the left slot; info panel fades in with stable layout (no jump when full AniList data loads). Shimmer skeleton while details load; **like, score, and list actions update the open detail immediately**. Same 32dp padding as poster/informative modes.
 - Settings shows **Season** as **This week’s airings** (read-only) while in calendar mode — use the content filters and **Sort** under **What to show** instead.
 - No auto-advance timer — browse weeks manually.
+- **Loading:** empty weeks show a grid skeleton; background refreshes show a light shimmer overlay on top of cached posters. Poster and informative modes show a matching skeleton on cold start (at least ~400ms) before slides appear.
 
 ### Clock & weather behavior
 

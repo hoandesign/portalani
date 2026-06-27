@@ -86,10 +86,10 @@ fun AnimeFrameSlide(
   val posterDriftX = -bgDriftX * 0.22f
   val posterDriftY = -bgDriftY * 0.22f
 
-  val entrance = remember(slide.id) { Animatable(0f) }
+  val entrance = remember(slide.id) { Animatable(0.5f) }
   LaunchedEffect(slide.id) {
-    entrance.snapTo(0f)
-    entrance.animateTo(1f, animationSpec = tween(durationMillis = 1_100, easing = FastOutSlowInEasing))
+    entrance.snapTo(0.5f)
+    entrance.animateTo(1f, animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing))
   }
   val enter = entrance.value
   val infoEnter = ((enter - 0.12f) / 0.88f).coerceIn(0f, 1f)

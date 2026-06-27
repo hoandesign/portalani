@@ -279,7 +279,7 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
   companion object {
     private const val GRAPHQL_URL = "https://graphql.anilist.co"
     const val DEFAULT_PER_PAGE = 50
-    const val DEFAULT_INITIAL_PAGES = 5
+    const val DEFAULT_INITIAL_PAGES = 2
     const val DEFAULT_LOAD_MORE_PAGES = 2
 
     private val MEDIA_FIELDS =

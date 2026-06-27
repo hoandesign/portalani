@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,9 +37,11 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
+import com.portal.portalani.R
 import com.portal.portalani.data.AnimeSlide
 import kotlin.math.roundToInt
 
@@ -49,6 +52,7 @@ fun CalendarDetailOverlay(
     infoSlide: AnimeSlide,
     sourceBounds: Rect,
     expandProgress: Float,
+    detailLoading: Boolean = false,
     onPosterToggle: () -> Unit,
     onLongPressOpenSettings: () -> Unit,
     onPlayTrailer: (() -> Unit)?,
@@ -137,16 +141,27 @@ fun CalendarDetailOverlay(
             },
             label = "calendarDetailInfo",
         ) { panelSlide ->
-          AnimeInfoPanel(
-              slide = panelSlide,
-              stableLayout = true,
-              modifier = Modifier.fillMaxSize(),
-              onPlayTrailer = onPlayTrailer,
-              onOpenAniList = onOpenAniList,
-              onTapScore = onTapScore,
-              onToggleFavourite = onToggleFavourite,
-              onEditList = onEditList,
-          )
+          Box(modifier = Modifier.fillMaxSize()) {
+            if (detailLoading) {
+              InformativePanelLoadingSkeleton(modifier = Modifier.fillMaxSize())
+              Text(
+                  text = stringResource(R.string.calendar_loading_detail),
+                  color = PortalAniColors.TextMuted,
+                  modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 8.dp),
+              )
+            } else {
+              AnimeInfoPanel(
+                  slide = panelSlide,
+                  stableLayout = true,
+                  modifier = Modifier.fillMaxSize(),
+                  onPlayTrailer = onPlayTrailer,
+                  onOpenAniList = onOpenAniList,
+                  onTapScore = onTapScore,
+                  onToggleFavourite = onToggleFavourite,
+                  onEditList = onEditList,
+              )
+            }
+          }
         }
       }
     }

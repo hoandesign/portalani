@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 
+private const val MIN_LOADING_DISPLAY_MS = 400L
+
 internal class SlideshowFeedLoader(
     private val scope: CoroutineScope,
     private val client: AniListClientPort,
@@ -55,15 +57,26 @@ internal class SlideshowFeedLoader(
     resetFeedPagination(cacheKey)
 
     val cachedFresh =
-        withContext(Dispatchers.IO) { slideCache.load(cacheKey) }?.let { filterSlidesForSettings(it, settings) }
+        withContext(Dispatchers.IO) { slideCache.load(cacheKey) }
+            ?.let { filterSlidesForSettings(it, settings) }
+            ?.takeIf { it.isNotEmpty() }
     val cachedStale =
         cachedFresh
             ?: withContext(Dispatchers.IO) { slideCache.loadStale(cacheKey) }
                 ?.let { filterSlidesForSettings(it, settings) }
+                ?.takeIf { it.isNotEmpty() }
+
+    val currentlyShowing = getCurrentShowing()
+    val hasDisplayedSlides = currentlyShowing?.slides?.isNotEmpty() == true
+    val loadStartedAt = System.currentTimeMillis()
 
     when {
+      showLoading && !hasDisplayedSlides -> onRootState(UiState.Loading)
+      showLoading && hasDisplayedSlides && cachedFresh != null ->
+          onRootState(showingState(cachedFresh, fromCache = true, isRefreshing = true))
+      showLoading && hasDisplayedSlides && cachedStale != null ->
+          onRootState(showingState(cachedStale, fromCache = true, isRefreshing = true))
       feedKeyChanged && cachedFresh == null -> onRootState(UiState.Loading)
-      showLoading && cachedFresh == null -> onRootState(UiState.Loading)
       cachedFresh != null -> onRootState(showingState(cachedFresh, fromCache = true))
     }
 
@@ -123,6 +136,13 @@ internal class SlideshowFeedLoader(
         feedHasMore = batch.hasMore
       }
       withContext(Dispatchers.IO) { slideCache.save(cacheKey, slides) }
+      if (showLoading && !hasDisplayedSlides) {
+        val elapsed = System.currentTimeMillis() - loadStartedAt
+        val remaining = MIN_LOADING_DISPLAY_MS - elapsed
+        if (remaining > 0) {
+          withContext(Dispatchers.IO) { Thread.sleep(remaining) }
+        }
+      }
       onRootState(showingState(slides, fromCache = false))
     } catch (e: Throwable) {
       when (e) {
@@ -272,10 +292,15 @@ internal class SlideshowFeedLoader(
     return slides.filter { filters.matchesSlide(it, applySeasonFilter = applySeasonFilter) }
   }
 
-  private fun showingState(slides: List<AnimeSlide>, fromCache: Boolean): UiState.Showing =
+  private fun showingState(
+      slides: List<AnimeSlide>,
+      fromCache: Boolean,
+      isRefreshing: Boolean = false,
+  ): UiState.Showing =
       UiState.Showing(
           slides = slides,
           fromCache = fromCache,
+          isRefreshing = isRefreshing,
           orderResetToken = orderResetToken,
       )
 

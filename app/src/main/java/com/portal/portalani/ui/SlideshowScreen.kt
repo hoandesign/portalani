@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -43,6 +44,7 @@ import kotlinx.coroutines.delay
 internal fun SlideshowScreen(
     slides: List<AnimeSlide>,
     fromCache: Boolean,
+    isRefreshing: Boolean = false,
     orderResetToken: Int,
     shuffle: Boolean,
     intervalMs: Long,
@@ -121,7 +123,10 @@ internal fun SlideshowScreen(
   val context = LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
 
-  if (order.isEmpty()) return
+  if (order.isEmpty()) {
+    AnimeLoadingScreen(frameMode = frameMode)
+    return
+  }
 
   val safeIndex = index.coerceIn(0, order.lastIndex)
   val interactionOpen = scoreDialogMediaId != null || listDialogMediaId != null || showSignInPrompt
@@ -334,7 +339,7 @@ internal fun SlideshowScreen(
         visible = showGuide,
     )
 
-    if (fromCache) {
+    if (fromCache && !isRefreshing) {
       Surface(
           color = Color(0x33000000),
           shape = PortalAniShapes.Pill,
@@ -347,6 +352,20 @@ internal fun SlideshowScreen(
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
         )
+      }
+    }
+
+    if (isRefreshing) {
+      Box(
+          modifier =
+              Modifier.fillMaxSize()
+                  .graphicsLayer { alpha = 0.92f },
+      ) {
+        when (frameMode) {
+          FrameMode.POSTER_ONLY -> PosterLoadingSkeleton(modifier = Modifier.fillMaxSize())
+          FrameMode.INFORMATIVE -> InformativeLoadingSkeleton(modifier = Modifier.fillMaxSize())
+          FrameMode.CALENDAR -> Unit
+        }
       }
     }
 

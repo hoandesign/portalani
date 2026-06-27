@@ -91,6 +91,7 @@ fun CalendarHostScreen(
     weekStartSetting: WeekStart,
     settingsOpen: Boolean,
     detailSlide: AnimeSlide?,
+    detailLoading: Boolean = false,
     isSignedIn: Boolean,
     onToggleSettings: () -> Unit,
     onShiftWeek: (Int) -> Unit,
@@ -278,6 +279,7 @@ fun CalendarHostScreen(
       CalendarDetailOverlay(
           slide = posterSlide,
           infoSlide = infoSlide,
+          detailLoading = detailLoading,
           sourceBounds = bounds,
           expandProgress = expandProgress,
           onPosterToggle = {
@@ -374,6 +376,7 @@ fun CalendarFrameScreen(
   val header = remember(weekStart, locale) { CalendarWeek.headerLabel(weekStart, locale) }
   val context = LocalContext.current
   val showGridSkeleton = loading && entries.isEmpty()
+  val showRefreshOverlay = loading && entries.isNotEmpty()
 
   Column(
       modifier =
@@ -509,30 +512,38 @@ fun CalendarFrameScreen(
               }
               else -> {
                 val scrollState = rememberScrollState()
-                Row(
-                    modifier =
-                        Modifier.fillMaxSize()
-                            .verticalScroll(scrollState)
-                            .padding(vertical = CalendarLayout.GridVerticalPadding),
-                    horizontalArrangement = Arrangement.spacedBy(CalendarLayout.ColumnSpacing),
-                ) {
-                  grouped.forEach { dayEntries ->
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(CalendarLayout.CardSpacing),
-                    ) {
-                      dayEntries.forEach { entry ->
-                        CalendarAiringCard(
-                            entry = entry,
-                            posterHeight = posterHeight,
-                            context = context,
-                            hidden = hiddenScheduleId == entry.scheduleId,
-                            clicksEnabled = entryClicksEnabled,
-                            onClick = { bounds -> onEntryClick(entry, bounds) },
-                            onLongPressOpenSettings = onLongPressOpenSettings,
-                        )
+                Box(Modifier.fillMaxSize()) {
+                  Row(
+                      modifier =
+                          Modifier.fillMaxSize()
+                              .verticalScroll(scrollState)
+                              .padding(vertical = CalendarLayout.GridVerticalPadding),
+                      horizontalArrangement = Arrangement.spacedBy(CalendarLayout.ColumnSpacing),
+                  ) {
+                    grouped.forEach { dayEntries ->
+                      Column(
+                          modifier = Modifier.weight(1f),
+                          verticalArrangement = Arrangement.spacedBy(CalendarLayout.CardSpacing),
+                      ) {
+                        dayEntries.forEach { entry ->
+                          CalendarAiringCard(
+                              entry = entry,
+                              posterHeight = posterHeight,
+                              context = context,
+                              hidden = hiddenScheduleId == entry.scheduleId,
+                              clicksEnabled = entryClicksEnabled,
+                              onClick = { bounds -> onEntryClick(entry, bounds) },
+                              onLongPressOpenSettings = onLongPressOpenSettings,
+                          )
+                        }
                       }
                     }
+                  }
+                  if (showRefreshOverlay) {
+                    CalendarGridRefreshOverlay(
+                        modifier = Modifier.fillMaxSize(),
+                        posterHeight = posterHeight,
+                    )
                   }
                 }
               }

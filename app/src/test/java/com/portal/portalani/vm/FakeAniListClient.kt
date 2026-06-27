@@ -23,6 +23,8 @@ class FakeAniListClient(
   var fetchViewerCalls = 0
   var libraryPagesError: IOException? = null
   var viewerListPagesError: IOException? = null
+  var airingSchedulesError: IOException? = null
+  var fetchLibraryPagesDelayMs: Long = 0
 
   override fun fetchViewer(accessToken: String): ViewerProfile {
     fetchViewerCalls++
@@ -38,6 +40,7 @@ class FakeAniListClient(
   ): FetchBatchResult {
     fetchLibraryPagesCalls++
     libraryPagesError?.let { throw it }
+    if (fetchLibraryPagesDelayMs > 0) Thread.sleep(fetchLibraryPagesDelayMs)
     return libraryPagesResult
   }
 
@@ -63,6 +66,7 @@ class FakeAniListClient(
       perPage: Int,
   ): List<CalendarAiringEntry> {
     fetchAiringSchedulesCalls++
+    airingSchedulesError?.let { throw it }
     return airingSchedules
   }
 

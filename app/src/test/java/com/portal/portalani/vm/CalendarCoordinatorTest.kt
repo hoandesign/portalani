@@ -10,10 +10,12 @@ import com.portal.portalani.data.SettingsStore
 import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.TokenStore
 import com.portal.portalani.data.sampleCalendarEntry
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -96,6 +98,81 @@ class CalendarCoordinatorTest {
     val state = rootState as UiState.NeedsSetup
     assertTrue(state.message.contains("calendar"))
     assertTrue(state.canUseLibrary)
+  }
+
+  private fun awaitCalendarLoadingFalse(coordinator: CalendarCoordinator, timeoutMs: Long = 3000) {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+      if (!coordinator.calendarLoading.value) return
+      Thread.sleep(10)
+    }
+    error("Timed out waiting for calendar loading to finish")
+  }
+
+  @Test
+  fun navigateToWeek_memoryCacheHit_setsLoadingDuringRefresh() {
+    val coordinator = createCoordinator()
+
+    coordinator.navigateToWeek()
+    awaitCalendarEntries(coordinator)
+    awaitCalendarLoadingFalse(coordinator)
+
+    coordinator.shiftWeek(1)
+    awaitCalendarEntries(coordinator)
+    awaitCalendarLoadingFalse(coordinator)
+
+    coordinator.shiftWeek(-1)
+    assertTrue(coordinator.calendarLoading.value)
+
+    awaitCalendarEntries(coordinator)
+    awaitCalendarLoadingFalse(coordinator)
+    assertFalse(coordinator.calendarLoading.value)
+  }
+
+  @Test
+  fun navigateToWeek_emptyWeek_showsLoadingUntilFetchCompletes() {
+    val coordinator = createCoordinator(fakeClient = FakeAniListClient(airingSchedules = emptyList()))
+
+    coordinator.navigateToWeek()
+
+    assertTrue(coordinator.calendarLoading.value)
+    assertTrue(coordinator.calendarState.value?.entries.isNullOrEmpty())
+
+    Thread.sleep(100)
+    assertFalse(coordinator.calendarLoading.value)
+    assertTrue(rootState is UiState.Showing)
+  }
+
+  @Test
+  fun loadWeek_networkFailureWithEmptyState_setsError() {
+    val fakeClient = FakeAniListClient(airingSchedules = emptyList())
+    fakeClient.airingSchedulesError = IOException("network down")
+    val coordinator = createCoordinator(fakeClient = fakeClient)
+
+    coordinator.navigateToWeek()
+    Thread.sleep(100)
+
+    assertTrue(rootState is UiState.Error)
+    assertFalse(coordinator.calendarLoading.value)
+  }
+
+  @Test
+  fun navigateToWeek_withCachedEntries_showsCalendarWhileRefreshing() {
+    val coordinator = createCoordinator()
+
+    coordinator.navigateToWeek()
+    awaitCalendarEntries(coordinator)
+    awaitCalendarLoadingFalse(coordinator)
+
+    coordinator.shiftWeek(1)
+    awaitCalendarEntries(coordinator)
+    awaitCalendarLoadingFalse(coordinator)
+
+    coordinator.shiftWeek(-1)
+
+    assertTrue(coordinator.calendarLoading.value)
+    assertTrue(rootState is UiState.Showing)
+    assertTrue(coordinator.calendarState.value?.entries?.isNotEmpty() == true)
   }
 
   @Test

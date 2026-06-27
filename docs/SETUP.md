@@ -97,7 +97,7 @@ scripts/deploy.sh          # USB install + screensaver registration (project roo
 GRADLE_OPTS="-Xmx2g" ./gradlew test
 ```
 
-107 JVM tests cover filters, caches, calendar math, AniList JSON parsing, coordinators, and ViewModel behavior. CI runs this on every push/PR.
+116 JVM tests cover filters, caches, calendar math, AniList JSON parsing, coordinators, and ViewModel behavior. CI runs this on every push/PR.
 
 ### Compose UI smoke tests (optional)
 

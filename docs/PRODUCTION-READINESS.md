@@ -4,7 +4,7 @@
 
 **Repo:** `portalani` · Package `com.portal.portalani` · Kotlin + Jetpack Compose · **v0.11.1** at time of writing.
 
-**Status (2026-06-19):** Phases 0–3 largely complete — audit doc, 107 JVM tests, CI on push/PR, R8 release builds, coordinators extracted (`SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`), network retry on read-only API calls, emulator UI smoke tests in CI. Remaining work: further VM slimming, optional Detekt, tighten emulator job to block merges when stable.
+**Status (2026-06-27):** Phases 0–3 largely complete — audit doc, **116** JVM tests, CI on push/PR, R8 release builds, coordinators extracted (`SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`), network retry on read-only API calls, emulator UI smoke tests in CI, loading skeletons across slideshow/calendar/detail. Remaining work: further VM slimming, optional Detekt, tighten emulator job to block merges when stable.
 
 **Owner:** The project owner (non-technical). Explain trade-offs in plain language. Get approval before large refactors or dependency additions.
 

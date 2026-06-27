@@ -44,6 +44,7 @@ fun PortalAniApp(
     calendarState: CalendarWeekState? = null,
     calendarLoading: Boolean = false,
     calendarDetailSlide: AnimeSlide? = null,
+    calendarDetailLoading: Boolean = false,
     geoStatus: String? = null,
     geoResults: List<GeoPlace> = emptyList(),
     viewerName: String?,
@@ -129,6 +130,7 @@ fun PortalAniApp(
                   weekStartSetting = settings.weekStart,
                   settingsOpen = showSettings,
                   detailSlide = calendarDetailSlide,
+                  detailLoading = calendarDetailLoading,
                   isSignedIn = isSignedIn,
                   onToggleSettings = { showSettings = !showSettings },
                   onShiftWeek = onShiftCalendarWeek,
@@ -141,10 +143,13 @@ fun PortalAniApp(
                   onRemoveFromList = onRemoveFromList,
                   onUserInteraction = onUserInteraction,
               )
+            } else if (state.slides.isEmpty()) {
+              AnimeLoadingScreen(frameMode = settings.frameMode)
             } else {
               SlideshowScreen(
                   slides = state.slides,
                   fromCache = state.fromCache,
+                  isRefreshing = state.isRefreshing,
                   orderResetToken = state.orderResetToken,
                   shuffle = settings.shuffle,
                   intervalMs = settings.intervalMs,

@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -263,6 +264,70 @@ fun InformativeLoadingSkeleton(modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun CalendarGridRefreshOverlay(
+    modifier: Modifier = Modifier,
+    posterHeight: Dp? = null,
+) {
+  val shimmer = rememberShimmerBrush()
+
+  Box(
+      modifier =
+          modifier
+              .background(Color(0xAA0B0D12))
+              .graphicsLayer { alpha = 0.92f },
+  ) {
+    CalendarWeekGridSkeleton(
+        modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.42f },
+        posterHeight = posterHeight,
+    )
+    Box(
+        modifier =
+            Modifier.fillMaxSize()
+                .background(shimmer)
+                .graphicsLayer { alpha = 0.18f },
+    )
+  }
+}
+
+@Composable
+fun InformativePanelLoadingSkeleton(modifier: Modifier = Modifier) {
+  val shimmer = rememberShimmerBrush()
+
+  Column(
+      modifier = modifier,
+      verticalArrangement = Arrangement.Center,
+  ) {
+    ShimmerBlock(brush = shimmer, modifier = Modifier.fillMaxWidth(0.72f).height(34.dp))
+    Spacer(Modifier.height(12.dp))
+    ShimmerBlock(brush = shimmer, modifier = Modifier.fillMaxWidth(0.48f).height(20.dp))
+    Spacer(Modifier.height(22.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+      ShimmerBlock(brush = shimmer, modifier = Modifier.width(88.dp).height(36.dp), shape = PortalAniShapes.Pill)
+      ShimmerBlock(brush = shimmer, modifier = Modifier.width(220.dp).height(36.dp), shape = PortalAniShapes.Pill)
+    }
+    Spacer(Modifier.height(18.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+      ShimmerBlock(brush = shimmer, modifier = Modifier.width(168.dp).height(64.dp), shape = PortalAniShapes.Chip)
+      ShimmerBlock(brush = shimmer, modifier = Modifier.width(168.dp).height(64.dp), shape = PortalAniShapes.Chip)
+    }
+    Spacer(Modifier.height(18.dp))
+    repeat(3) { index ->
+      ShimmerBlock(
+          brush = shimmer,
+          modifier = Modifier.fillMaxWidth(if (index == 2) 0.62f else 1f).height(16.dp),
+      )
+      if (index < 2) Spacer(Modifier.height(10.dp))
+    }
+    Spacer(Modifier.height(18.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      repeat(4) {
+        ShimmerBlock(brush = shimmer, modifier = Modifier.width(72.dp).height(30.dp), shape = PortalAniShapes.Pill)
+      }
+    }
+  }
+}
+
+@Composable
 internal fun ShimmerBlock(
     brush: Brush,
     modifier: Modifier = Modifier,
@@ -281,7 +346,7 @@ internal fun rememberShimmerBrush(): Brush {
       label = "shimmerOffset",
   )
   val base = Color(0xFF1A1F29)
-  val highlight = Color(0xFF2E3648)
+  val highlight = Color(0xFF4E5F7A)
   return Brush.linearGradient(
       colors = listOf(base, highlight, base),
       start = Offset(offset * 1200f - 400f, 0f),

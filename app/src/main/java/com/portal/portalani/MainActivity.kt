@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         val calendarState by vm.calendarState.collectAsStateWithLifecycle()
         val calendarLoading by vm.calendarLoading.collectAsStateWithLifecycle()
         val calendarDetailSlide by vm.calendarDetailSlide.collectAsStateWithLifecycle()
+        val calendarDetailLoading by vm.calendarDetailLoading.collectAsStateWithLifecycle()
         val viewerName by vm.viewerName.collectAsStateWithLifecycle()
         val isSignedIn by vm.isSignedIn.collectAsStateWithLifecycle()
         val userMessage by vm.userMessage.collectAsStateWithLifecycle()
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
             calendarState = calendarState,
             calendarLoading = calendarLoading,
             calendarDetailSlide = calendarDetailSlide,
+            calendarDetailLoading = calendarDetailLoading,
             geoStatus = geoStatus,
             geoResults = geoResults,
             viewerName = viewerName,

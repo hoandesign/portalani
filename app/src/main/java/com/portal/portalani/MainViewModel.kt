@@ -63,6 +63,7 @@ sealed interface UiState {
   data class Showing(
       val slides: List<AnimeSlide>,
       val fromCache: Boolean = false,
+      val isRefreshing: Boolean = false,
       /** Bumps on full feed reload; slideshow order resets when this changes. */
       val orderResetToken: Int = 0,
   ) : UiState
@@ -625,7 +626,7 @@ class MainViewModel internal constructor(
   }
 
   fun removeFromList(mediaId: Int) {
-    val slide = (_state.value as? UiState.Showing)?.slides?.firstOrNull { it.id == mediaId }
+    val slide = slideForUserAction(mediaId)
     if (slide?.listEntryId == null) {
       _userMessage.value = "This anime is not on your list."
       return
@@ -634,6 +635,12 @@ class MainViewModel internal constructor(
       client.deleteMediaListEntry(token, current.listEntryId!!)
       current.withUserState(listEntryId = null, listStatus = null)
     }
+  }
+
+  private fun slideForUserAction(mediaId: Int): AnimeSlide? {
+    val showing = _state.value as? UiState.Showing ?: return null
+    return showing.slides.firstOrNull { it.id == mediaId }
+        ?: calendar.calendarDetailSlide.value?.takeIf { it.id == mediaId }
   }
 
   private fun performUserAction(
@@ -646,13 +653,12 @@ class MainViewModel internal constructor(
       _userMessage.value = "Sign in to manage your AniList."
       return
     }
-    val current = _state.value as? UiState.Showing ?: return
-    val slide = current.slides.firstOrNull { it.id == mediaId } ?: return
+    val slide = slideForUserAction(mediaId) ?: return
 
     viewModelScope.launch {
       try {
         val updated = withContext(Dispatchers.IO) { transform(token, slide) }
-        updateSlideInState(mediaId, updated)
+        applySlideUpdate(mediaId, updated)
         feedLoader.persistCurrentSlides()
       } catch (e: IOException) {
         _userMessage.value = userVisibleError(e, failureMessage)
@@ -662,9 +668,12 @@ class MainViewModel internal constructor(
     }
   }
 
-  private fun updateSlideInState(mediaId: Int, updated: AnimeSlide) {
-    val current = _state.value as? UiState.Showing ?: return
-    _state.value = current.copy(slides = current.slides.map { if (it.id == mediaId) updated else it })
+  private fun applySlideUpdate(mediaId: Int, updated: AnimeSlide) {
+    val current = _state.value as? UiState.Showing
+    if (current != null && current.slides.isNotEmpty()) {
+      _state.value = current.copy(slides = current.slides.map { if (it.id == mediaId) updated else it })
+    }
+    calendar.updateDetailSlideIfOpen(mediaId, updated)
   }
 
   private fun updateSettings(next: AppSettings) {

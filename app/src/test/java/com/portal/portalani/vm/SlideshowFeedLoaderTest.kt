@@ -16,6 +16,8 @@ import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -74,6 +76,75 @@ class SlideshowFeedLoaderTest {
       Thread.sleep(10)
     }
     error("Timed out waiting for Showing, last=$rootState")
+  }
+
+  @Test
+  fun coldStartWithFreshCache_staysOnLoadingUntilNetworkCompletes() {
+    val cachedSlide = sampleSlide(id = 55)
+    val settings = AppSettings()
+    val cache = AnimeSlideCache(app)
+    cache.save(settings.cacheKey(), listOf(cachedSlide))
+    val fakeClient =
+        FakeAniListClient(
+            libraryPagesResult = FetchBatchResult(listOf(sampleSlide(id = 99)), 2, false),
+        ).apply { fetchLibraryPagesDelayMs = 300 }
+    val loader = createLoader(settings = settings, fakeClient = fakeClient)
+
+    runBlocking {
+      val job = launch { loader.loadSlides(showLoading = true) }
+      delay(50)
+      assertTrue(rootState is UiState.Loading)
+      job.join()
+    }
+
+    val state = awaitShowing()
+    assertEquals(99, state.slides.first().id)
+    assertFalse(state.isRefreshing)
+  }
+
+  @Test
+  fun coldStartWithoutCache_staysOnLoadingUntilNetworkCompletes() {
+    val fakeClient =
+        FakeAniListClient(
+            libraryPagesResult = FetchBatchResult(listOf(sampleSlide(id = 99)), 2, false),
+        ).apply { fetchLibraryPagesDelayMs = 300 }
+    val loader = createLoader(fakeClient = fakeClient)
+
+    runBlocking {
+      val job = launch { loader.loadSlides(showLoading = true) }
+      delay(50)
+      assertTrue(rootState is UiState.Loading)
+      job.join()
+    }
+
+    val state = awaitShowing()
+    assertEquals(99, state.slides.first().id)
+  }
+
+  @Test
+  fun forceReloadWhileShowing_usesRefreshingOverlay() {
+    val cachedSlide = sampleSlide(id = 55)
+    val settings = AppSettings()
+    val cache = AnimeSlideCache(app)
+    cache.save(settings.cacheKey(), listOf(cachedSlide))
+    val fakeClient =
+        FakeAniListClient(
+            libraryPagesResult = FetchBatchResult(listOf(sampleSlide(id = 99)), 2, false),
+        )
+    val loader = createLoader(settings = settings, fakeClient = fakeClient)
+
+    runBlocking { loader.loadSlides(showLoading = false) }
+    awaitShowing()
+
+    fakeClient.fetchLibraryPagesDelayMs = 300
+    runBlocking {
+      val job = launch { loader.loadSlides(showLoading = true) }
+      delay(50)
+      val refreshing = rootState as UiState.Showing
+      assertTrue(refreshing.isRefreshing)
+      assertTrue(refreshing.slides.isNotEmpty())
+      job.join()
+    }
   }
 
   @Test

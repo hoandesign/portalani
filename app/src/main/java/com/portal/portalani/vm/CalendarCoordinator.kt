@@ -82,8 +82,8 @@ internal class CalendarCoordinator(
     val memCached = calendarMemoryCache[cacheKey]
     if (memCached != null) {
       _calendarState.value = memCached
-      _calendarLoading.value = false
-      scope.launch { loadWeek(weekStart = weekStart, allowStaleOverlay = false) }
+      beginVisibleWeekRefresh(weekStart, hasVisibleEntries = memCached.entries.isNotEmpty())
+      scope.launch { loadWeek(weekStart = weekStart) }
       return
     }
 
@@ -98,8 +98,8 @@ internal class CalendarCoordinator(
           )
       calendarMemoryCache[cacheKey] = fromDisk
       _calendarState.value = fromDisk
-      _calendarLoading.value = false
-      scope.launch { loadWeek(weekStart = weekStart, allowStaleOverlay = false) }
+      beginVisibleWeekRefresh(weekStart, hasVisibleEntries = fromDisk.entries.isNotEmpty())
+      scope.launch { loadWeek(weekStart = weekStart) }
       return
     }
 
@@ -109,8 +109,8 @@ internal class CalendarCoordinator(
             entries = emptyList(),
             isCurrentWeek = calendarWeekOffset == 0,
         )
-    _calendarLoading.value = true
-    scope.launch { loadWeek(weekStart = weekStart, allowStaleOverlay = true) }
+    beginVisibleWeekRefresh(weekStart, hasVisibleEntries = false)
+    scope.launch { loadWeek(weekStart = weekStart) }
   }
 
   fun openEntry(entry: CalendarAiringEntry) {
@@ -142,16 +142,22 @@ internal class CalendarCoordinator(
     _calendarDetailLoading.value = false
   }
 
+  fun updateDetailSlideIfOpen(mediaId: Int, updated: AnimeSlide) {
+    if (_calendarDetailSlide.value?.id == mediaId) {
+      _calendarDetailSlide.value = updated
+    }
+  }
+
   suspend fun loadWeek(
       showLoading: Boolean = false,
       weekStart: LocalDate = calendarWeekStart(),
-      allowStaleOverlay: Boolean = showLoading,
   ) {
     val settings = getSettings()
     val token = tokens.accessToken()
 
     if (settings.sourceMode == SourceMode.PERSONAL && token == null) {
       _calendarState.value = null
+      _calendarLoading.value = false
       onRootState(
           UiState.NeedsSetup(
               message = "Sign in to show your list schedule on the calendar.",
@@ -168,10 +174,14 @@ internal class CalendarCoordinator(
     val airingAtLesser = weekEnd.atTime(23, 59, 59).atZone(zone).toEpochSecond().toInt()
 
     val cacheKey = settings.calendarCacheKey(weekStart.toEpochDay())
-    val hasVisibleData = calendarMemoryCache[cacheKey]?.entries?.isNotEmpty() == true
-    val showLoadingOverlay = allowStaleOverlay && !hasVisibleData && calendarWeekStart(settings) == weekStart
-    if (showLoadingOverlay) {
-      _calendarLoading.value = true
+    val isVisibleWeek = calendarWeekStart(settings) == weekStart
+    val hasVisibleData = visibleEntriesFor(cacheKey).isNotEmpty()
+    if (isVisibleWeek) {
+      if (showLoading || !hasVisibleData) {
+        beginVisibleWeekRefresh(weekStart, hasVisibleEntries = hasVisibleData)
+      } else {
+        _calendarLoading.value = true
+      }
     }
 
     try {
@@ -204,7 +214,7 @@ internal class CalendarCoordinator(
           )
       calendarMemoryCache[cacheKey] = loaded
       calendarWeekCache.save(cacheKey, weekStart, sorted)
-      if (calendarWeekStart(settings) == weekStart) {
+      if (isVisibleWeek) {
         _calendarState.value = loaded
       }
       onRootState(UiState.Showing(slides = emptyList(), fromCache = false))
@@ -214,37 +224,61 @@ internal class CalendarCoordinator(
         is IOException, is JSONException -> {
           if (isAniListAuthFailure(e)) {
             _calendarState.value = null
+            _calendarLoading.value = false
             onSessionExpired(userVisibleError(e, "Your AniList sign-in expired. Sign in again."))
             return
           }
-          if (_calendarState.value == null) {
+          val recovered = recoverVisibleWeekFromStale(cacheKey, weekStart, settings)
+          if (!recovered && visibleEntriesFor(cacheKey).isEmpty()) {
             onRootState(
                 UiState.Error(userVisibleError(e, "Could not load airing schedule"), canOpenSettings = true),
             )
-          } else if (!hasVisibleData) {
-            val stale = calendarWeekCache.loadStale(cacheKey)
-            if (stale != null && stale.weekStart == weekStart) {
-              val fallback =
-                  CalendarWeekState(
-                      weekStart = weekStart,
-                      entries = stale.entries,
-                      isCurrentWeek = calendarWeekOffset == 0,
-                      fromCache = true,
-                  )
-              calendarMemoryCache[cacheKey] = fallback
-              if (calendarWeekStart(settings) == weekStart) {
-                _calendarState.value = fallback
-              }
-            }
           }
         }
         else -> throw e
       }
     } finally {
-      if (calendarWeekStart(settings) == weekStart) {
+      if (isVisibleWeek) {
         _calendarLoading.value = false
       }
     }
+  }
+
+  private fun beginVisibleWeekRefresh(weekStart: LocalDate, hasVisibleEntries: Boolean) {
+    _calendarLoading.value = true
+    if (!hasVisibleEntries) {
+      onRootState(UiState.Loading)
+    } else {
+      onRootState(UiState.Showing(slides = emptyList(), fromCache = true))
+    }
+  }
+
+  private fun visibleEntriesFor(cacheKey: String): List<CalendarAiringEntry> {
+    val stateEntries = _calendarState.value?.entries.orEmpty()
+    if (stateEntries.isNotEmpty()) return stateEntries
+    return calendarMemoryCache[cacheKey]?.entries.orEmpty()
+  }
+
+  private fun recoverVisibleWeekFromStale(
+      cacheKey: String,
+      weekStart: LocalDate,
+      settings: AppSettings,
+  ): Boolean {
+    val stale = calendarWeekCache.loadStale(cacheKey) ?: return false
+    if (stale.weekStart != weekStart || stale.entries.isEmpty()) return false
+    val fallback =
+        CalendarWeekState(
+            weekStart = weekStart,
+            entries = stale.entries,
+            isCurrentWeek = calendarWeekOffset == 0,
+            fromCache = true,
+        )
+    calendarMemoryCache[cacheKey] = fallback
+    if (calendarWeekStart(settings) == weekStart) {
+      _calendarState.value = fallback
+      onRootState(UiState.Showing(slides = emptyList(), fromCache = true))
+    }
+    return true
   }
 
   private fun prefetchAdjacentWeeks(settings: AppSettings, weekStart: LocalDate) {

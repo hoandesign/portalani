@@ -4,6 +4,7 @@ import android.app.Application
 import com.portal.portalani.MainViewModel
 import com.portal.portalani.MainViewModelDeps
 import com.portal.portalani.UiState
+import com.portal.portalani.data.AnimeSlide
 import com.portal.portalani.data.AnimeSlideCache
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.AniListHttpException
@@ -11,6 +12,7 @@ import com.portal.portalani.data.CalendarWeekCache
 import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.FormatFilter
 import com.portal.portalani.data.FrameMode
+import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.SettingsStore
 import com.portal.portalani.data.SourceMode
 import com.portal.portalani.data.TokenStore
@@ -55,8 +57,8 @@ class MainViewModelTest {
       settings: AppSettings = AppSettings(),
       fakeClient: FakeAniListClient = FakeAniListClient(),
       fakeAuth: FakeAniListAuth = FakeAniListAuth(),
+      tokens: TokenStore = TokenStore(app),
   ): MainViewModel {
-    val tokens = TokenStore(app)
     val settingsStore = SettingsStore(app)
     settingsStore.save(settings)
     val http = OkHttpClient()
@@ -104,6 +106,31 @@ class MainViewModelTest {
       Thread.sleep(10)
     }
     error("Timed out waiting for orderResetToken > $before, last=${vm.state.value}")
+  }
+
+  private fun awaitCalendarDetail(vm: MainViewModel, mediaId: Int, timeoutMs: Long = 3000): AnimeSlide {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+      val slide = vm.calendarDetailSlide.value
+      if (slide?.id == mediaId && vm.calendarDetailLoading.value == false) return slide
+      Thread.sleep(10)
+    }
+    error("Timed out waiting for calendar detail $mediaId, last=${vm.calendarDetailSlide.value}")
+  }
+
+  private fun awaitCalendarDetailField(
+      vm: MainViewModel,
+      mediaId: Int,
+      timeoutMs: Long = 3000,
+      predicate: (AnimeSlide) -> Boolean,
+  ): AnimeSlide {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+      val slide = vm.calendarDetailSlide.value
+      if (slide?.id == mediaId && predicate(slide)) return slide
+      Thread.sleep(10)
+    }
+    error("Timed out waiting for calendar detail update on $mediaId, last=${vm.calendarDetailSlide.value}")
   }
 
   @Test
@@ -258,6 +285,77 @@ class MainViewModelTest {
 
     val state = awaitState(vm, UiState.Error::class.java)
     assertTrue(state.message!!.contains("network down"))
+  }
+
+  @Test
+  fun calendarDetailToggleFavourite_updatesDetailSlide() {
+    val entry = sampleCalendarEntry(mediaId = 42)
+    val detailSlide = sampleSlide(id = 42).copy(listEntryId = 7, listStatus = ListStatus.CURRENT, isFavourite = false)
+    val tokens =
+        TokenStore(app).apply {
+          saveAccessToken("test-token")
+          saveViewer(ViewerProfile(id = 7, name = "Hoan"))
+        }
+    val fakeClient =
+        FakeAniListClient(
+            airingSchedules = listOf(entry),
+            mediaById = detailSlide,
+        )
+    val vm =
+        createViewModel(
+            settings =
+                AppSettings(
+                    frameMode = FrameMode.CALENDAR,
+                    sourceMode = SourceMode.LIBRARY,
+                ),
+            fakeClient = fakeClient,
+            tokens = tokens,
+        )
+
+    vm.refresh()
+    awaitCalendarState(vm)
+    vm.openCalendarEntry(entry)
+    awaitCalendarDetail(vm, mediaId = 42)
+
+    vm.toggleFavourite(42)
+
+    assertTrue(awaitCalendarDetailField(vm, mediaId = 42) { it.isFavourite }.isFavourite)
+  }
+
+  @Test
+  fun calendarDetailSetUserScore_updatesDetailSlide() {
+    val entry = sampleCalendarEntry(mediaId = 42)
+    val detailSlide =
+        sampleSlide(id = 42).copy(listEntryId = 7, listStatus = ListStatus.CURRENT, userScore = null)
+    val tokens =
+        TokenStore(app).apply {
+          saveAccessToken("test-token")
+          saveViewer(ViewerProfile(id = 7, name = "Hoan"))
+        }
+    val fakeClient =
+        FakeAniListClient(
+            airingSchedules = listOf(entry),
+            mediaById = detailSlide,
+        )
+    val vm =
+        createViewModel(
+            settings =
+                AppSettings(
+                    frameMode = FrameMode.CALENDAR,
+                    sourceMode = SourceMode.LIBRARY,
+                ),
+            fakeClient = fakeClient,
+            tokens = tokens,
+        )
+
+    vm.refresh()
+    awaitCalendarState(vm)
+    vm.openCalendarEntry(entry)
+    awaitCalendarDetail(vm, mediaId = 42)
+
+    vm.setUserScore(42, 8.5f)
+
+    assertEquals(8.5f, awaitCalendarDetailField(vm, mediaId = 42) { it.userScore == 8.5f }.userScore)
   }
 
   @Test
