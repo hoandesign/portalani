@@ -27,6 +27,8 @@ import com.portal.portalani.data.LibrarySort
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.PowerMode
 import com.portal.portalani.data.PowerPolicy
+import com.portal.portalani.data.RelatedAnime
+import com.portal.portalani.data.toPlaceholderSlide
 import com.portal.portalani.data.GeoPlace
 import com.portal.portalani.data.SettingsStore
 import com.portal.portalani.data.SourceMode
@@ -73,6 +75,19 @@ sealed interface UiState {
       val canOpenSettings: Boolean = false,
   ) : UiState
 }
+
+data class RelatedAnimeOverlayState(
+    val mediaId: Int,
+    val sourceTitle: String,
+    val items: List<RelatedAnime> = emptyList(),
+    val loading: Boolean = true,
+)
+
+data class RelatedMediaDetailState(
+    val mediaId: Int,
+    val slide: AnimeSlide,
+    val loading: Boolean = true,
+)
 
 class MainViewModel internal constructor(
     app: Application,
@@ -179,6 +194,12 @@ class MainViewModel internal constructor(
   val calendarDetailSlide = calendar.calendarDetailSlide
   val calendarDetailLoading = calendar.calendarDetailLoading
 
+  private val _relatedAnimeOverlay = MutableStateFlow<RelatedAnimeOverlayState?>(null)
+  val relatedAnimeOverlay: StateFlow<RelatedAnimeOverlayState?> = _relatedAnimeOverlay.asStateFlow()
+
+  private val _relatedMediaDetail = MutableStateFlow<RelatedMediaDetailState?>(null)
+  val relatedMediaDetail: StateFlow<RelatedMediaDetailState?> = _relatedMediaDetail.asStateFlow()
+
   init {
     if (runBootstrap) {
       val application = getApplication<Application>()
@@ -222,6 +243,77 @@ class MainViewModel internal constructor(
 
   fun closeCalendarDetail() {
     calendar.closeDetail()
+  }
+
+  fun showRelatedAnime(mediaId: Int, title: String) {
+    _relatedMediaDetail.value = null
+    _relatedAnimeOverlay.value =
+        RelatedAnimeOverlayState(mediaId = mediaId, sourceTitle = title, loading = true)
+    viewModelScope.launch {
+      try {
+        val items =
+            withContext(Dispatchers.IO) {
+              client.fetchRelatedMedia(mediaId, tokens.accessToken())
+            }
+        if (_relatedAnimeOverlay.value?.mediaId == mediaId) {
+          _relatedAnimeOverlay.value =
+              RelatedAnimeOverlayState(
+                  mediaId = mediaId,
+                  sourceTitle = title,
+                  items = items,
+                  loading = false,
+              )
+        }
+      } catch (e: IOException) {
+        if (_relatedAnimeOverlay.value?.mediaId == mediaId) {
+          _userMessage.value = userVisibleError(e, "Could not load related anime.")
+          _relatedAnimeOverlay.value = null
+        }
+      } catch (e: JSONException) {
+        if (_relatedAnimeOverlay.value?.mediaId == mediaId) {
+          _userMessage.value = userVisibleError(e, "Could not load related anime.")
+          _relatedAnimeOverlay.value = null
+        }
+      }
+    }
+  }
+
+  fun dismissRelatedAnime() {
+    _relatedAnimeOverlay.value = null
+    _relatedMediaDetail.value = null
+  }
+
+  fun openRelatedMediaDetail(item: RelatedAnime) {
+    _relatedMediaDetail.value =
+        RelatedMediaDetailState(mediaId = item.id, slide = item.toPlaceholderSlide(), loading = true)
+    viewModelScope.launch {
+      try {
+        val slide =
+            withContext(Dispatchers.IO) {
+              client.fetchMediaById(item.id, tokens.accessToken())
+            }
+        if (slide != null && _relatedMediaDetail.value?.mediaId == item.id) {
+          _relatedMediaDetail.value = RelatedMediaDetailState(mediaId = item.id, slide = slide, loading = false)
+        } else if (slide == null && _relatedMediaDetail.value?.mediaId == item.id) {
+          _userMessage.value = "Could not load anime details."
+          _relatedMediaDetail.value = null
+        }
+      } catch (e: IOException) {
+        if (_relatedMediaDetail.value?.mediaId == item.id) {
+          _userMessage.value = userVisibleError(e, "Could not load anime details.")
+          _relatedMediaDetail.value = null
+        }
+      } catch (e: JSONException) {
+        if (_relatedMediaDetail.value?.mediaId == item.id) {
+          _userMessage.value = userVisibleError(e, "Could not load anime details.")
+          _relatedMediaDetail.value = null
+        }
+      }
+    }
+  }
+
+  fun closeRelatedMediaDetail() {
+    _relatedMediaDetail.value = null
   }
 
   fun setWeekStart(weekStart: WeekStart) {
@@ -638,9 +730,10 @@ class MainViewModel internal constructor(
   }
 
   private fun slideForUserAction(mediaId: Int): AnimeSlide? {
-    val showing = _state.value as? UiState.Showing ?: return null
-    return showing.slides.firstOrNull { it.id == mediaId }
+    val showing = _state.value as? UiState.Showing
+    return showing?.slides?.firstOrNull { it.id == mediaId }
         ?: calendar.calendarDetailSlide.value?.takeIf { it.id == mediaId }
+        ?: _relatedMediaDetail.value?.slide?.takeIf { it.id == mediaId }
   }
 
   private fun performUserAction(
@@ -674,6 +767,9 @@ class MainViewModel internal constructor(
       _state.value = current.copy(slides = current.slides.map { if (it.id == mediaId) updated else it })
     }
     calendar.updateDetailSlideIfOpen(mediaId, updated)
+    _relatedMediaDetail.value?.takeIf { it.mediaId == mediaId }?.let { detail ->
+      _relatedMediaDetail.value = detail.copy(slide = updated)
+    }
   }
 
   private fun updateSettings(next: AppSettings) {

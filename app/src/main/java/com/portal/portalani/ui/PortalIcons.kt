@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -29,4 +30,5 @@ object PortalIcons {
   val SwipeForward: ImageVector = Icons.AutoMirrored.Filled.ArrowForward
   val Settings: ImageVector = Icons.Filled.Settings
   val TapPoster: ImageVector = Icons.Filled.Add
+  val Related: ImageVector = Icons.Filled.Movie
 }

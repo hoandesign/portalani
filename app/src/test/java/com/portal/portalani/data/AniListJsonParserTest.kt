@@ -129,4 +129,97 @@ class AniListJsonParserTest {
     assertNull(AniListJsonParser.parseListStatus("NOT_A_STATUS"))
     assertEquals(ListStatus.CURRENT, AniListJsonParser.parseListStatus("CURRENT"))
   }
+
+  @Test
+  fun parseRelatedMedia_mergesRelationsAndRecommendations() {
+    val media =
+        JSONObject(
+            """
+            {
+              "relations": {
+                "edges": [
+                  {
+                    "relationType": "SEQUEL",
+                    "node": {
+                      "id": 2,
+                      "type": "ANIME",
+                      "title": { "english": "Sequel Show" },
+                      "coverImage": { "large": "https://example.com/sequel.jpg" },
+                      "averageScore": 82
+                    }
+                  }
+                ]
+              },
+              "recommendations": {
+                "nodes": [
+                  {
+                    "mediaRecommendation": {
+                      "id": 3,
+                      "type": "ANIME",
+                      "title": { "romaji": "Reco One" },
+                      "coverImage": { "large": "https://example.com/reco.jpg" },
+                      "averageScore": 75
+                    }
+                  },
+                  {
+                    "mediaRecommendation": {
+                      "id": 2,
+                      "type": "ANIME",
+                      "title": { "english": "Duplicate" },
+                      "coverImage": { "large": "https://example.com/dup.jpg" }
+                    }
+                  }
+                ]
+              }
+            }
+            """
+                .trimIndent(),
+        )
+
+    val related = AniListJsonParser.parseRelatedMedia(media, sourceId = 1)
+
+    assertEquals(2, related.size)
+    assertEquals(2, related[0].id)
+    assertEquals("Sequel Show", related[0].title)
+    assertEquals("Sequel", related[0].kindLabel)
+    assertEquals(3, related[1].id)
+    assertEquals("Reco One", related[1].title)
+    assertEquals("Recommendation", related[1].kindLabel)
+    assertTrue(related[1].isRecommendation)
+  }
+
+  @Test
+  fun mergeRelatedMedia_ordersFranchiseBeforeRecommendations() {
+    val franchise =
+        listOf(
+            RelatedAnime(10, "Season 1", "https://example.com/10.jpg", kindLabel = "Prequel", sortYear = 2019),
+            RelatedAnime(20, "Season 2", "https://example.com/20.jpg", kindLabel = "Prequel", sortYear = 2021),
+        )
+    val relationEdges = listOf("PREQUEL" to node(20, "Season 2 duplicate"))
+    val recommendations = listOf(node(99, "Reco"))
+
+    val merged =
+        AniListJsonParser.mergeRelatedMedia(
+            sourceId = 30,
+            franchiseCluster = franchise,
+            relationEdges = relationEdges,
+            recommendationNodes = recommendations,
+        )
+
+    assertEquals(listOf(10, 20, 99), merged.map { it.id })
+    assertEquals("Recommendation", merged.last().kindLabel)
+  }
+
+  private fun node(id: Int, title: String): JSONObject =
+      JSONObject(
+          """
+          {
+            "id": $id,
+            "type": "ANIME",
+            "title": { "english": "$title" },
+            "coverImage": { "large": "https://example.com/$id.jpg" }
+          }
+          """
+              .trimIndent(),
+      )
 }

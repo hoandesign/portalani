@@ -60,6 +60,7 @@ fun CalendarDetailOverlay(
     onTapScore: (() -> Unit)?,
     onToggleFavourite: (() -> Unit)?,
     onEditList: (() -> Unit)?,
+    onShowRelated: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
@@ -159,6 +160,7 @@ fun CalendarDetailOverlay(
                   onTapScore = onTapScore,
                   onToggleFavourite = onToggleFavourite,
                   onEditList = onEditList,
+                  onShowRelated = onShowRelated,
               )
             }
           }

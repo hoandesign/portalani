@@ -4,7 +4,7 @@
 
 **Repo:** `portalani` · Package `com.portal.portalani` · Kotlin + Jetpack Compose · **v0.11.1** at time of writing.
 
-**Status (2026-06-27):** Phases 0–3 largely complete — audit doc, **116** JVM tests, CI on push/PR, R8 release builds, coordinators extracted (`SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`), network retry on read-only API calls, emulator UI smoke tests in CI, loading skeletons across slideshow/calendar/detail. Remaining work: further VM slimming, optional Detekt, tighten emulator job to block merges when stable.
+**Status (2026-06-27):** Phases 0–3 largely complete — audit doc, **120** JVM tests, CI on push/PR, R8 release builds, coordinators extracted (`SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`), network retry on read-only API calls, emulator UI smoke tests in CI, loading skeletons across slideshow/calendar/detail, related-anime franchise graph + native detail overlay. Remaining work: further VM slimming, optional Detekt, tighten emulator job to block merges when stable.
 
 **Owner:** The project owner (non-technical). Explain trade-offs in plain language. Get approval before large refactors or dependency additions.
 
@@ -213,6 +213,8 @@ portalani/
 │   ├── ScreensaverGuard.kt
 │   ├── data/
 │   │   ├── AniListClient.kt     # GraphQL + org.json parsing
+│   │   ├── AniListRelationGraph.kt  # Franchise BFS for related anime
+│   │   ├── RelatedAnime.kt
 │   │   ├── LibraryFilters.kt    # Filters, season picker domain
 │   │   ├── CalendarWeek.kt
 │   │   ├── Models.kt
@@ -222,6 +224,8 @@ portalani/
 │       ├── PortalAniApp.kt      # Settings + shell (~1.5k lines) ⚠️
 │       ├── AnimeInteractionDialogs.kt
 │       ├── CalendarFrame.kt
+│       ├── RelatedAnimeCarouselOverlay.kt
+│       ├── RelatedMediaDetailOverlay.kt
 │       └── PortalAniTheme.kt
 ├── docs/SETUP.md                # Portal deploy + AniList OAuth
 ├── scripts/deploy.sh
@@ -239,6 +243,7 @@ portalani/
 | Personal mode | List fetch → client-side format/country/source/demographic filter |
 | Full library | AniList API pre-filters format/source; country/demographic on device |
 | Calendar | Week grid, no season picker; airing schedule from AniList |
+| Related anime | Film icon in detail; BFS franchise walk + direct edges, then paginated recommendations; native detail overlay from carousel |
 | Modals | Centered, scrollable lists, pinned Close/Apply (v0.9.34) |
 | Offline | `AnimeSlideCache` / `CalendarWeekCache` show “saved feed” badge |
 | Power | Quiet hours + idle sleep modes |

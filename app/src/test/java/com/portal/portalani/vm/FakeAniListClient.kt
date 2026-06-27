@@ -7,6 +7,7 @@ import com.portal.portalani.data.FetchBatchResult
 import com.portal.portalani.data.LibraryFilters
 import com.portal.portalani.data.ListStatus
 import com.portal.portalani.data.MediaListUpdate
+import com.portal.portalani.data.RelatedAnime
 import com.portal.portalani.data.ViewerProfile
 import java.io.IOException
 
@@ -16,6 +17,7 @@ class FakeAniListClient(
     var viewerProfile: ViewerProfile = ViewerProfile(id = 1, name = "Test User"),
     var airingSchedules: List<CalendarAiringEntry> = emptyList(),
     var mediaById: AnimeSlide? = null,
+    var relatedMedia: List<RelatedAnime> = emptyList(),
 ) : AniListClientPort {
   var fetchLibraryPagesCalls = 0
   var fetchViewerListPagesCalls = 0
@@ -58,6 +60,8 @@ class FakeAniListClient(
   }
 
   override fun fetchMediaById(id: Int, accessToken: String?): AnimeSlide? = mediaById
+
+  override fun fetchRelatedMedia(id: Int, accessToken: String?): List<RelatedAnime> = relatedMedia
 
   override fun fetchAiringSchedules(
       airingAtGreater: Int,

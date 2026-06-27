@@ -23,7 +23,9 @@ internal interface AniListClientPort {
       perPage: Int = AniListClient.DEFAULT_PER_PAGE,
   ): FetchBatchResult
 
-  fun fetchMediaById(id: Int, accessToken: String? = null): AnimeSlide?
+  fun fetchMediaById(id: Int, accessToken: String?): AnimeSlide?
+
+  fun fetchRelatedMedia(id: Int, accessToken: String? = null): List<RelatedAnime>
 
   fun fetchAiringSchedules(
       airingAtGreater: Int,

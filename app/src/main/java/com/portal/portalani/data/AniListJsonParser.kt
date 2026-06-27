@@ -217,4 +217,126 @@ internal object AniListJsonParser {
     return if (raw <= 10.0) raw.toFloat() else (raw / 10.0).toFloat()
   }
 
+  fun parseRelatedMedia(media: JSONObject, sourceId: Int): List<RelatedAnime> {
+    val edges = parseRelationEdges(media)
+    val nodes = media.optJSONObject("recommendations")?.optJSONArray("nodes") ?: JSONArray()
+    val recommendations =
+        (0 until nodes.length()).mapNotNull { index ->
+          nodes.optJSONObject(index)?.optJSONObject("mediaRecommendation")
+        }
+    return mergeRelatedMedia(
+        sourceId = sourceId,
+        relationEdges = edges,
+        recommendationNodes = recommendations,
+    )
+  }
+
+  fun mergeRelatedMedia(
+      sourceId: Int,
+      franchiseCluster: List<RelatedAnime> = emptyList(),
+      relationEdges: List<Pair<String, JSONObject>> = emptyList(),
+      recommendationNodes: List<JSONObject> = emptyList(),
+  ): List<RelatedAnime> {
+    val seen = mutableSetOf(sourceId)
+    val relations = mutableListOf<RelatedAnime>()
+
+    fun addRelation(item: RelatedAnime) {
+      if (item.id == sourceId || !seen.add(item.id)) return
+      relations += item
+    }
+
+    franchiseCluster.forEach(::addRelation)
+
+    val supplemental =
+        relationEdges
+            .asSequence()
+            .mapNotNull { (relationType, node) -> relatedFromEdge(relationType, node) }
+            .sortedWith(compareBy({ relationSortKey(it.kindLabel) }, { it.sortYear ?: Int.MAX_VALUE }, { it.title }))
+            .toList()
+    supplemental.forEach(::addRelation)
+
+    val recommendations = mutableListOf<RelatedAnime>()
+    for (node in recommendationNodes) {
+      parseRelatedNode(node, "Recommendation")?.let { item ->
+        if (item.id != sourceId && seen.add(item.id)) {
+          recommendations += item.copy(isRecommendation = true)
+        }
+      }
+    }
+
+    return relations + recommendations
+  }
+
+  fun relatedFromEdge(relationType: String, node: JSONObject): RelatedAnime? {
+    if (!node.optString("type").equals("ANIME", ignoreCase = true)) return null
+    return parseRelatedNode(node, formatRelationLabel(relationType))
+  }
+
+  fun parseRelationEdges(media: JSONObject): List<Pair<String, JSONObject>> {
+    val edges = media.optJSONObject("relations")?.optJSONArray("edges") ?: return emptyList()
+    val parsed = mutableListOf<Pair<String, JSONObject>>()
+    for (i in 0 until edges.length()) {
+      val edge = edges.optJSONObject(i) ?: continue
+      val node = edge.optJSONObject("node") ?: continue
+      val relationType = edge.optString("relationType").takeIf { it.isNotBlank() && it != "null" } ?: continue
+      parsed += relationType to node
+    }
+    return parsed
+  }
+
+  fun parseRecommendationPageInfo(media: JSONObject): Boolean? {
+    val pageInfo = media.optJSONObject("recommendations")?.optJSONObject("pageInfo") ?: return null
+    return if (pageInfo.has("hasNextPage")) pageInfo.optBoolean("hasNextPage") else null
+  }
+
+  private fun relationSortKey(label: String?): Int =
+      when (label?.lowercase()) {
+        "prequel" -> 0
+        "sequel" -> 1
+        "parent" -> 2
+        "side story" -> 3
+        "spin off" -> 4
+        "adaptation" -> 5
+        "source" -> 6
+        "summary" -> 7
+        "alternative" -> 8
+        "other" -> 9
+        "character" -> 10
+        "contains" -> 11
+        "compilation" -> 12
+        else -> 13
+      }
+
+  private fun parseRelatedNode(media: JSONObject, kindLabel: String?): RelatedAnime? {
+    val coverImage = media.optJSONObject("coverImage")
+    val cover =
+        sequenceOf("large", "medium")
+            .mapNotNull { key ->
+              coverImage?.optString(key).orEmpty().takeIf { it.isNotBlank() && it != "null" }
+            }
+            .firstOrNull()
+            ?: return null
+
+    val titleObj = media.optJSONObject("title")
+    val english = titleObj?.optString("english").orEmpty().takeIf { it.isNotBlank() && it != "null" }
+    val romaji = titleObj?.optString("romaji").orEmpty().takeIf { it.isNotBlank() && it != "null" }
+    val native = titleObj?.optString("native").orEmpty().takeIf { it.isNotBlank() && it != "null" }
+    val sortYear = media.optJSONObject("startDate")?.optInt("year")?.takeIf { it > 0 }
+
+    return RelatedAnime(
+        id = media.getInt("id"),
+        title = english ?: romaji ?: native ?: "Anime",
+        coverUrl = cover,
+        averageScore = media.optInt("averageScore").takeIf { it > 0 },
+        kindLabel = kindLabel,
+        sortYear = sortYear,
+    )
+  }
+
+  private fun formatRelationLabel(raw: String): String =
+      raw
+          .lowercase()
+          .split('_')
+          .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+
 }

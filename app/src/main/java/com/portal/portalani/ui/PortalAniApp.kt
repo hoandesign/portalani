@@ -1,6 +1,8 @@
 package com.portal.portalani.ui
 
 import androidx.activity.compose.BackHandler
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,12 +17,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.portal.portalani.R
 import com.portal.portalani.CalendarWeekState
+import com.portal.portalani.RelatedAnimeOverlayState
+import com.portal.portalani.RelatedMediaDetailState
 import com.portal.portalani.UiState
 import com.portal.portalani.data.AnimeSlide
+import com.portal.portalani.data.RelatedAnime
 import com.portal.portalani.data.AppSettings
 import com.portal.portalani.data.CalendarAiringEntry
 import com.portal.portalani.data.CountryFilter
@@ -94,9 +100,19 @@ fun PortalAniApp(
     onCompleteOnboarding: () -> Unit = {},
     onResetOnboarding: () -> Unit = {},
     appVersion: String = "",
+    relatedAnimeOverlay: RelatedAnimeOverlayState? = null,
+    relatedMediaDetail: RelatedMediaDetailState? = null,
+    onShowRelatedAnime: (Int, String) -> Unit = { _, _ -> },
+    onDismissRelatedAnime: () -> Unit = {},
+    onOpenRelatedMediaDetail: (RelatedAnime) -> Unit = {},
+    onCloseRelatedMediaDetail: () -> Unit = {},
 ) {
   var showSettings by remember { mutableStateOf(false) }
   val snackbarHostState = remember { SnackbarHostState() }
+  val context = LocalContext.current
+  var relatedDetailTrailerId by remember { mutableStateOf<String?>(null) }
+  var showRelatedDetailScoreDialog by remember { mutableStateOf(false) }
+  var showRelatedDetailListDialog by remember { mutableStateOf(false) }
 
   LaunchedEffect(userMessage) {
     val message = userMessage ?: return@LaunchedEffect
@@ -142,6 +158,7 @@ fun PortalAniApp(
                   onSetAnimeListStatus = onSetAnimeListStatus,
                   onRemoveFromList = onRemoveFromList,
                   onUserInteraction = onUserInteraction,
+                  onShowRelatedAnime = onShowRelatedAnime,
               )
             } else if (state.slides.isEmpty()) {
               AnimeLoadingScreen(frameMode = settings.frameMode)
@@ -167,6 +184,7 @@ fun PortalAniApp(
                   onRemoveFromList = onRemoveFromList,
                   onSlideIndexChanged = onSlideIndexChanged,
                   onUserInteraction = onUserInteraction,
+                  onShowRelatedAnime = onShowRelatedAnime,
                   onboardingComplete = onboardingComplete,
                   onCompleteOnboarding = onCompleteOnboarding,
               )
@@ -224,5 +242,79 @@ fun PortalAniApp(
         hostState = snackbarHostState,
         modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
     )
+
+    relatedAnimeOverlay?.let { overlay ->
+      RelatedAnimeCarouselOverlay(
+          sourceTitle = overlay.sourceTitle,
+          items = overlay.items,
+          loading = overlay.loading,
+          onDismiss = onDismissRelatedAnime,
+          onSelectRelated = onOpenRelatedMediaDetail,
+      )
+    }
+
+    relatedMediaDetail?.let { detail ->
+      val slide = detail.slide
+      val withSignIn: (() -> Unit) -> Unit = { action ->
+        if (isSignedIn) {
+          action()
+        } else {
+          onSignIn()
+        }
+      }
+
+      RelatedMediaDetailOverlay(
+          slide = slide,
+          detailLoading = detail.loading,
+          onDismiss = onCloseRelatedMediaDetail,
+          onPlayTrailer = slide.trailerYoutubeId?.let { id -> { relatedDetailTrailerId = id } },
+          onOpenAniList = {
+            CustomTabsIntent.Builder()
+                .build()
+                .launchUrl(context, Uri.parse(slide.anilistUrl))
+          },
+          onTapScore = { withSignIn { showRelatedDetailScoreDialog = true } },
+          onToggleFavourite = { withSignIn { onToggleFavourite(slide.id) } },
+          onEditList = { withSignIn { showRelatedDetailListDialog = true } },
+          onShowRelated = { onShowRelatedAnime(slide.id, slide.title) },
+      )
+
+      relatedDetailTrailerId?.let { id ->
+        TrailerOverlay(youtubeId = id, onDismiss = { relatedDetailTrailerId = null })
+      }
+
+      if (showRelatedDetailScoreDialog) {
+        ScoreSliderDialog(
+            animeTitle = slide.title,
+            initialScore = slide.userScore,
+            onDismiss = { showRelatedDetailScoreDialog = false },
+            onSave = { score ->
+              onSetUserScore(slide.id, score)
+              showRelatedDetailScoreDialog = false
+            },
+        )
+      }
+
+      if (showRelatedDetailListDialog) {
+        ListStatusDialog(
+            animeTitle = slide.title,
+            currentStatus = slide.listStatus,
+            onDismiss = { showRelatedDetailListDialog = false },
+            onSelect = { status ->
+              onSetAnimeListStatus(slide.id, status)
+              showRelatedDetailListDialog = false
+            },
+            onRemove =
+                if (slide.isOnList) {
+                  {
+                    onRemoveFromList(slide.id)
+                    showRelatedDetailListDialog = false
+                  }
+                } else {
+                  null
+                },
+        )
+      }
+    }
   }
 }

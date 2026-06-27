@@ -140,4 +140,13 @@
     <string name="list_status_dialog_hint">Choose where this anime belongs on your AniList.</string>
     <string name="remove_from_list">Remove from list</string>
     <string name="sign_in_for_actions">Sign in to rate, favourite, and manage your lists.</string>
+    <string name="show_related_anime">Related anime</string>
+    <string name="related_anime_title">Related anime</string>
+    <string name="related_anime_loading">Loading related anime…</string>
+    <string name="related_anime_empty">No related anime found for this title.</string>
+    <string name="related_anime_previous">Previous</string>
+    <string name="related_anime_next">Next</string>
+    <string name="related_anime_position">%1$d / %2$d</string>
+    <string name="related_anime_hint">Swipe or use arrows to browse. Tap a poster for details.</string>
+    <string name="related_media_detail_title">Anime details</string>
 </resources>

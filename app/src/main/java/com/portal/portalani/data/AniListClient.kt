@@ -99,6 +99,45 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
   }
 
   @Throws(IOException::class)
+  override fun fetchRelatedMedia(id: Int, accessToken: String?): List<RelatedAnime> {
+    val edgeCache = mutableMapOf<Int, List<Pair<String, JSONObject>>>()
+
+    fun fetchRelationEdges(mediaId: Int): List<Pair<String, JSONObject>> =
+        edgeCache.getOrPut(mediaId) {
+          val variables = JSONObject().put("id", mediaId)
+          val data = postGraphQl(RELATIONS_QUERY, variables, accessToken)
+          val media = data.optJSONObject("Media") ?: return@getOrPut emptyList()
+          AniListJsonParser.parseRelationEdges(media)
+        }
+
+    val franchiseCluster =
+        AniListRelationGraph.expandFranchiseBfs(startId = id, edgesFor = ::fetchRelationEdges)
+    val relationEdges = fetchRelationEdges(id)
+
+    val recommendationNodes = mutableListOf<JSONObject>()
+    var recPage = 1
+    while (recPage <= MAX_RECOMMENDATION_PAGES) {
+      val variables = JSONObject().put("id", id).put("page", recPage)
+      val data = postGraphQl(RECOMMENDATIONS_PAGE_QUERY, variables, accessToken)
+      val media = data.optJSONObject("Media") ?: break
+      val nodes = media.optJSONObject("recommendations")?.optJSONArray("nodes") ?: JSONArray()
+      for (i in 0 until nodes.length()) {
+        nodes.optJSONObject(i)?.optJSONObject("mediaRecommendation")?.let { recommendationNodes += it }
+      }
+      val pageInfo = AniListJsonParser.parseRecommendationPageInfo(media) ?: break
+      if (!pageInfo) break
+      recPage++
+    }
+
+    return AniListJsonParser.mergeRelatedMedia(
+        sourceId = id,
+        franchiseCluster = franchiseCluster,
+        relationEdges = relationEdges,
+        recommendationNodes = recommendationNodes,
+    )
+  }
+
+  @Throws(IOException::class)
   override fun fetchAiringSchedules(
       airingAtGreater: Int,
       airingAtLesser: Int,
@@ -348,6 +387,54 @@ class AniListClient(private val http: OkHttpClient) : AniListClientPort {
           Media(id: ${'$'}id, type: ANIME) {
             $MEDIA_FIELDS
             $MEDIA_USER_FIELDS
+          }
+        }
+        """
+            .trimIndent()
+
+    private const val MAX_RECOMMENDATION_PAGES = 4
+    private const val RELATED_RECOMMENDATIONS_PER_PAGE = 25
+
+    private val RELATIONS_QUERY =
+        """
+        query (${'$'}id: Int) {
+          Media(id: ${'$'}id, type: ANIME) {
+            relations {
+              edges {
+                relationType(version: 2)
+                node {
+                  id
+                  type
+                  title { romaji english native }
+                  startDate { year }
+                  coverImage { large medium }
+                  averageScore
+                }
+              }
+            }
+          }
+        }
+        """
+            .trimIndent()
+
+    private val RECOMMENDATIONS_PAGE_QUERY =
+        """
+        query (${'$'}id: Int, ${'$'}page: Int) {
+          Media(id: ${'$'}id, type: ANIME) {
+            recommendations(page: ${'$'}page, perPage: $RELATED_RECOMMENDATIONS_PER_PAGE, sort: RATING_DESC) {
+              pageInfo {
+                hasNextPage
+              }
+              nodes {
+                mediaRecommendation {
+                  id
+                  type
+                  title { romaji english native }
+                  coverImage { large medium }
+                  averageScore
+                }
+              }
+            }
           }
         }
         """

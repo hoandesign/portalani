@@ -80,6 +80,7 @@ fun AnimeFrameSlide(
     posterExpanded: Boolean = false,
     onPosterToggle: () -> Unit = {},
     onPosterLongPress: (() -> Unit)? = null,
+    onShowRelated: (() -> Unit)? = null,
 ) {
   val context = LocalContext.current
   val (bgDriftX, bgDriftY) = rememberPosterParallaxOffsets(enabled = !posterExpanded, slideId = slide.id)
@@ -128,6 +129,7 @@ fun AnimeFrameSlide(
               onTapScore = onTapScore,
               onToggleFavourite = onToggleFavourite,
               onEditList = onEditList,
+              onShowRelated = onShowRelated,
           )
       FrameMode.POSTER_ONLY ->
           PosterModeFrameContent(
@@ -144,6 +146,7 @@ fun AnimeFrameSlide(
               onTapScore = onTapScore,
               onToggleFavourite = onToggleFavourite,
               onEditList = onEditList,
+              onShowRelated = onShowRelated,
           )
       FrameMode.CALENDAR -> Unit
     }
@@ -219,6 +222,7 @@ private fun InformativeFrameContent(
     onTapScore: (() -> Unit)?,
     onToggleFavourite: (() -> Unit)?,
     onEditList: (() -> Unit)?,
+    onShowRelated: (() -> Unit)?,
 ) {
   Row(
       modifier =
@@ -273,6 +277,7 @@ private fun InformativeFrameContent(
         onTapScore = onTapScore,
         onToggleFavourite = onToggleFavourite,
         onEditList = onEditList,
+        onShowRelated = onShowRelated,
     )
   }
 }
@@ -293,6 +298,7 @@ private fun PosterModeFrameContent(
     onTapScore: (() -> Unit)?,
     onToggleFavourite: (() -> Unit)?,
     onEditList: (() -> Unit)?,
+    onShowRelated: (() -> Unit)?,
 ) {
   val posterShape = PortalAniShapes.Poster
   val score = slide.averageScore?.let { it / 10.0 }
@@ -443,6 +449,7 @@ private fun PosterModeFrameContent(
           onTapScore = onTapScore,
           onToggleFavourite = onToggleFavourite,
           onEditList = onEditList,
+          onShowRelated = onShowRelated,
       )
     }
   }
@@ -459,6 +466,7 @@ internal fun AnimeInfoPanel(
     onTapScore: (() -> Unit)? = null,
     onToggleFavourite: (() -> Unit)? = null,
     onEditList: (() -> Unit)? = null,
+    onShowRelated: (() -> Unit)? = null,
 ) {
   val meta = remember(slide) { buildMetaLine(slide) }
   val synopsis = slide.description?.let { if (it.length > 320) it.take(317) + "…" else it }
@@ -481,16 +489,33 @@ internal fun AnimeInfoPanel(
       Spacer(Modifier.height(34.dp))
     }
 
-    Text(
-        text = slide.title,
-        color = PortalAniColors.TextPrimary,
-        fontSize = 34.sp,
-        fontWeight = FontWeight.Bold,
-        lineHeight = 40.sp,
-        maxLines = 3,
-        overflow = TextOverflow.Ellipsis,
-        style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.85f), blurRadius = 20f)),
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      Text(
+          text = slide.title,
+          color = PortalAniColors.TextPrimary,
+          fontSize = 34.sp,
+          fontWeight = FontWeight.Bold,
+          lineHeight = 40.sp,
+          maxLines = 3,
+          overflow = TextOverflow.Ellipsis,
+          style = TextStyle(shadow = Shadow(color = Color.Black.copy(alpha = 0.85f), blurRadius = 20f)),
+          modifier = Modifier.weight(1f, fill = false),
+      )
+      if (onShowRelated != null) {
+        PortalCircleIconButton(
+            icon = PortalIcons.Related,
+            contentDescription = stringResource(R.string.show_related_anime),
+            onClick = onShowRelated,
+            size = 42.dp,
+            iconSize = 21.dp,
+            tint = PortalAniColors.Cyan,
+        )
+      }
+    }
 
     if (!slide.nativeTitle.isNullOrBlank()) {
       Spacer(Modifier.height(6.dp))

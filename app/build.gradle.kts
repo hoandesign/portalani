@@ -22,8 +22,8 @@ android {
     applicationId = "com.portal.portalani"
     minSdk = 28
     targetSdk = 29
-    versionCode = 90
-    versionName = "0.11.1"
+    versionCode = 91
+    versionName = "0.11.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -81,6 +81,7 @@ dependencies {
   implementation(libs.androidx.activity.compose)
   implementation(libs.androidx.compose.material3)
   implementation(libs.androidx.compose.material.icons.core)
+  implementation("androidx.compose.material:material-icons-extended")
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.animation)
   implementation(libs.androidx.compose.foundation)

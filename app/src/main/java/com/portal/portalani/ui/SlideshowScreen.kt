@@ -62,6 +62,7 @@ internal fun SlideshowScreen(
     onRemoveFromList: (Int) -> Unit,
     onSlideIndexChanged: (Int) -> Unit,
     onUserInteraction: () -> Unit,
+    onShowRelatedAnime: (Int, String) -> Unit,
     onboardingComplete: Boolean,
     onCompleteOnboarding: () -> Unit,
 ) {
@@ -308,6 +309,7 @@ internal fun SlideshowScreen(
           onTapScore = { withSignIn { scoreDialogMediaId = slide.id } },
           onToggleFavourite = { withSignIn { onToggleFavourite(slide.id) } },
           onEditList = { withSignIn { listDialogMediaId = slide.id } },
+          onShowRelated = { onShowRelatedAnime(slide.id, slide.title) },
       )
     }
 

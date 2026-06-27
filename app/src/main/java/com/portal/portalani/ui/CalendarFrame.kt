@@ -103,6 +103,7 @@ fun CalendarHostScreen(
     onSetAnimeListStatus: (Int, ListStatus) -> Unit,
     onRemoveFromList: (Int) -> Unit,
     onUserInteraction: () -> Unit,
+    onShowRelatedAnime: (Int, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val density = LocalDensity.current
@@ -300,6 +301,7 @@ fun CalendarHostScreen(
           onTapScore = { withSignIn { scoreDialogMediaId = posterSlide.id } },
           onToggleFavourite = { withSignIn { onToggleFavourite(posterSlide.id) } },
           onEditList = { withSignIn { listDialogMediaId = posterSlide.id } },
+          onShowRelated = { onShowRelatedAnime(posterSlide.id, posterSlide.title) },
           modifier = Modifier.fillMaxSize(),
       )
     }

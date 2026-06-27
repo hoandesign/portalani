@@ -8,7 +8,7 @@ AniList-powered anime screensaver for **Meta Portal**. Fullscreen landscape slid
 Inspired by [portal-gphotos](https://github.com/ram-nat/portal-gphotos).
 
 **Package:** `com.portal.portalani`  
-**Version:** 0.11.1
+**Version:** 0.11.2
 
 ## Features
 
@@ -37,7 +37,7 @@ Run unit tests (filters, season encoding, calendar math, cache JSON, AniList par
 GRADLE_OPTS="-Xmx4g" ./gradlew test
 ```
 
-**116 JVM unit tests** across the data layer, `SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`, and `MainViewModel` behavioral paths.
+**120 JVM unit tests** across the data layer, `SlideshowFeedLoader`, `CalendarCoordinator`, `AniListSessionHandler`, and `MainViewModel` behavioral paths.
 
 **3 Compose UI smoke tests** (`androidTest`) — settings sheet, format filter dialog (Apply/Close visible), list status scroll.
 
@@ -59,6 +59,7 @@ GRADLE_OPTS="-Xmx4g" ./gradlew connectedDebugAndroidTest
 | **Previous** | Swipe right or tap left edge | Swipe right or tap left edge (previous week) |
 | **Settings** | Long-press center (or poster in poster mode) | Long-press center, day header, month title, or any poster |
 | **Detail** | Tap poster (poster mode flip) | Tap poster — expands to same layout as informative mode |
+| **Related anime** | Movie icon beside title in detail — franchise carousel, then recommendations; tap a poster for in-app detail | Same |
 | **Today** | — | Tap **Today** (top right) |
 
 On first launch, subtle on-screen hints walk through swipe, hold-for-settings, and (in poster mode) tap-poster. They fade away after you try each gesture or after a short pause.
@@ -73,7 +74,8 @@ On first launch, subtle on-screen hints walk through swipe, hold-for-settings, a
 - **Personal** source: only anime on your selected lists. **Full library**: all airing anime matching filters.
 - **What’s on the grid:** every episode AniList schedules for that week. There is **no season picker** and **no status filter** (finished shows with a final episode still appear if AniList lists them for that week).
 - **Filters that still apply:** format (TV, movie, OVA, …), country of origin, source material (manga, light novel, …), demographic (shounen, seinen, …), sort order, **Hide Hentai**, and (in Personal mode) your selected lists.
-- **Detail view:** poster animates from the grid card into the left slot; info panel fades in with stable layout (no jump when full AniList data loads). Shimmer skeleton while details load; **like, score, and list actions update the open detail immediately**. Same 32dp padding as poster/informative modes.
+- **Detail view:** poster animates from the grid card into the left slot; info panel fades in with stable layout (no jump when full AniList data loads). Shimmer skeleton while details load; **like, score, and list actions update the open detail immediately**. Tap the **related anime** icon (film) beside the title to browse related titles. Same 32dp padding as poster/informative modes.
+- **Related anime** (poster, informative, and calendar detail): AniList only links each season to its immediate neighbors, so the app walks the full **PREQUEL / SEQUEL / PARENT** chain (breadth-first), then shows side stories, specials, and other direct links, then **recommendations last**. Swipe the carousel or use arrow buttons. **Tap a poster** to open a native in-app detail panel (synopsis, trailer, AniList actions); back returns to the carousel. AniList in the browser is optional via the detail panel’s AniList button.
 - Settings shows **Season** as **This week’s airings** (read-only) while in calendar mode — use the content filters and **Sort** under **What to show** instead.
 - No auto-advance timer — browse weeks manually.
 - **Loading:** empty weeks show a grid skeleton; background refreshes show a light shimmer overlay on top of cached posters. Poster and informative modes show a matching skeleton on cold start (at least ~400ms) before slides appear.

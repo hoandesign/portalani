@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity() {
         val weather by vm.weather.collectAsStateWithLifecycle()
         val geoStatus by vm.geoStatus.collectAsStateWithLifecycle()
         val geoResults by vm.geoResults.collectAsStateWithLifecycle()
+        val relatedAnimeOverlay by vm.relatedAnimeOverlay.collectAsStateWithLifecycle()
+        val relatedMediaDetail by vm.relatedMediaDetail.collectAsStateWithLifecycle()
         var lastUserInteractionMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
         val slideshowAllowed = PowerPolicy.shouldRunSlideshow(settings)
 
@@ -150,6 +152,12 @@ class MainActivity : ComponentActivity() {
             onCompleteOnboarding = vm::completeOnboarding,
             onResetOnboarding = vm::resetOnboarding,
             appVersion = BuildConfig.VERSION_NAME,
+            relatedAnimeOverlay = relatedAnimeOverlay,
+            relatedMediaDetail = relatedMediaDetail,
+            onShowRelatedAnime = vm::showRelatedAnime,
+            onDismissRelatedAnime = vm::dismissRelatedAnime,
+            onOpenRelatedMediaDetail = vm::openRelatedMediaDetail,
+            onCloseRelatedMediaDetail = vm::closeRelatedMediaDetail,
         )
       }
     }
